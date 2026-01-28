@@ -3,6 +3,9 @@ package com.infernalsuite.asp.loaders.mongo;
 import com.infernalsuite.asp.api.exceptions.UnknownWorldException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -21,10 +24,11 @@ class MongoLoaderTest {
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0");
 
     private MongoLoader loader;
+    private String uri;
 
     @BeforeEach
     void setUp() {
-        String uri = mongoDBContainer.getReplicaSetUrl();
+        uri = mongoDBContainer.getReplicaSetUrl();
 
         // Clean database before each test for isolation
         try (MongoClient client = MongoClients.create(uri)) {
@@ -32,6 +36,82 @@ class MongoLoaderTest {
         }
 
         loader = new MongoLoader("testdb", "worlds", null, null, null, null, null, uri);
+    }
+
+    @Nested
+    @DisplayName("Constructor Tests")
+    class ConstructorTests {
+
+        @Test
+        @DisplayName("should create loader with MongoClient parameter")
+        void shouldCreateLoaderWithMongoClientParameter() {
+            MongoClient client = MongoClients.create(uri);
+            MongoLoader clientLoader = new MongoLoader(client, "testdb2", "worlds2");
+
+            assertNotNull(clientLoader);
+            assertDoesNotThrow(() -> clientLoader.listWorlds());
+        }
+
+        @Test
+        @DisplayName("should create loader with host and port parameters")
+        void shouldCreateLoaderWithHostAndPortParameters() {
+            String host = mongoDBContainer.getHost();
+            Integer port = mongoDBContainer.getMappedPort(27017);
+
+            MongoLoader hostLoader = new MongoLoader("testdb3", "worlds3", null, null, null, host, port, null);
+
+            assertNotNull(hostLoader);
+            assertDoesNotThrow(() -> hostLoader.listWorlds());
+        }
+
+        @Test
+        @DisplayName("should create loader with auth parameters")
+        void shouldCreateLoaderWithAuthParameters() {
+            String host = mongoDBContainer.getHost();
+            Integer port = mongoDBContainer.getMappedPort(27017);
+
+            // MongoDB container doesn't have auth by default, but we test the URL construction
+            MongoLoader authLoader = new MongoLoader("testdb4", "worlds4", null, null, "admin", host, port, null);
+
+            assertNotNull(authLoader);
+        }
+    }
+
+    @Nested
+    @DisplayName("update method")
+    class UpdateTests {
+
+        @Test
+        @DisplayName("should handle update when no migration needed")
+        void shouldHandleUpdateWhenNoMigrationNeeded() {
+            assertDoesNotThrow(() -> loader.update());
+        }
+
+        @Test
+        @DisplayName("should handle interrupted lock migration gracefully")
+        void shouldHandleInterruptedLockMigrationGracefully() {
+            // Insert a document with boolean locked field to trigger migration
+            try (MongoClient client = MongoClients.create(uri)) {
+                MongoDatabase db = client.getDatabase("testdb");
+                MongoCollection<Document> collection = db.getCollection("worlds");
+                collection.insertOne(new Document("name", "test_world").append("locked", true));
+            }
+
+            // Interrupt the thread to trigger InterruptedException in update()
+            Thread testThread = Thread.currentThread();
+            Thread interrupter = new Thread(() -> {
+                try {
+                    Thread.sleep(100);
+                    testThread.interrupt();
+                } catch (InterruptedException ignored) {}
+            });
+            interrupter.start();
+
+            assertDoesNotThrow(() -> loader.update());
+
+            // Clear interrupt flag
+            Thread.interrupted();
+        }
     }
 
     @Nested
