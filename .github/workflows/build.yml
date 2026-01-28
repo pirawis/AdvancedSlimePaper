@@ -40,8 +40,8 @@ jobs:
 
       - name: Apply Patches & Build
         run: |
-          ./gradlew applyAllPatches --parallel --build-cache --configuration-cache
-          ./gradlew build createMojmapPaperclipJar --parallel --build-cache --configuration-cache
+          ./gradlew applyAllPatches --parallel --build-cache
+          ./gradlew build createMojmapPaperclipJar --parallel --build-cache
         env:
           GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=100 -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true -Dorg.gradle.workers.max=4 -Dkotlin.incremental=true"
 
