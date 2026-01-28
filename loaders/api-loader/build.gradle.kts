@@ -6,6 +6,9 @@ plugins {
 dependencies {
     compileOnly(project(":api"))
     compileOnly(paperApi())
+    testImplementation(project(":api"))
+    testRuntimeOnly(paperApi())
+    testImplementation(libs.wiremock)
 }
 
 publishConfiguration {

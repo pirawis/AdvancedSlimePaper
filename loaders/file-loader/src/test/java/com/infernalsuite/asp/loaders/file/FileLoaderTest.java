@@ -227,6 +227,54 @@ class FileLoaderTest {
             assertTrue(worlds.contains("myworld"));
             assertFalse(worlds.contains("myworld.slime"));
         }
+
+        @Test
+        @DisplayName("should throw NotDirectoryException when worldDir is deleted")
+        void shouldThrowNotDirectoryExceptionWhenWorldDirIsDeleted() throws IOException {
+            assertTrue(worldDir.delete());
+
+            assertThrows(NotDirectoryException.class, () -> loader.listWorlds());
+        }
+    }
+
+    @Nested
+    @DisplayName("edge cases")
+    class EdgeCaseTests {
+
+        @Test
+        @DisplayName("should handle empty world data")
+        void shouldHandleEmptyWorldData() throws IOException, UnknownWorldException {
+            byte[] emptyData = new byte[0];
+            loader.saveWorld("emptyworld", emptyData);
+
+            assertTrue(loader.worldExists("emptyworld"));
+            assertArrayEquals(emptyData, loader.readWorld("emptyworld"));
+        }
+
+        @Test
+        @DisplayName("should handle world name with special characters")
+        void shouldHandleWorldNameWithSpecialCharacters() throws IOException, UnknownWorldException {
+            byte[] data = {1, 2, 3};
+            String worldName = "my-world_123";
+
+            loader.saveWorld(worldName, data);
+
+            assertTrue(loader.worldExists(worldName));
+            assertArrayEquals(data, loader.readWorld(worldName));
+        }
+
+        @Test
+        @DisplayName("should use existing directory without recreation")
+        void shouldUseExistingDirectoryWithoutRecreation() {
+            File existingDir = tempDir.resolve("existingdir").toFile();
+            assertTrue(existingDir.mkdir());
+
+            FileLoader existingLoader = new FileLoader(existingDir);
+
+            assertNotNull(existingLoader);
+            assertTrue(existingDir.exists());
+            assertTrue(existingDir.isDirectory());
+        }
     }
 
     private void createWorldFile(String name, byte[] data) throws IOException {

@@ -24,6 +24,7 @@ plugin-yml-paper = "0.6.0"
 shadow = "8.3.5"
 slf4j = "2.0.16"
 zstd = "1.5.6-8"
+wiremock = "3.10.0"
 
 [plugins]
 blossom = { id = "net.kyori.blossom", version.ref = "blossom" }
@@ -73,3 +74,4 @@ testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.re
 testcontainers-mongodb = { module = "org.testcontainers:mongodb", version.ref = "testcontainers" }
 testcontainers-mysql = { module = "org.testcontainers:mysql", version.ref = "testcontainers" }
 testcontainers-redis = { module = "com.redis:testcontainers-redis", version = "2.2.2" }
+wiremock = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremock" }
