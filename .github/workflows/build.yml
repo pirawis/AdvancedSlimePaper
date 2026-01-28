@@ -30,7 +30,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/release/1.21.4' }}
 
       - name: Apply Patches
-        run: ./gradlew applyPatches --stacktrace
+        run: ./gradlew applyAllPatches --stacktrace
 
       - name: Build
         run: ./gradlew build --stacktrace
