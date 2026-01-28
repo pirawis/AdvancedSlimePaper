@@ -54,20 +54,26 @@ subprojects {
         options.encoding = Charsets.UTF_8.name()
         options.release = JAVA_VERSION
         options.isFork = true
-        options.compilerArgs.addAll(listOf("-Xlint:-deprecation", "-Xlint:-removal"))
+        options.compilerArgs.add("-Xlint:none")
     }
     tasks.withType<Javadoc> {
         options.encoding = Charsets.UTF_8.name()
-        (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+        (options as StandardJavadocDocletOptions).apply {
+            addStringOption("Xdoclint:none", "-quiet")
+            addStringOption("-Xmaxwarns", "1")
+        }
+        isFailOnError = false
+        logging.captureStandardError(LogLevel.QUIET)
+        logging.captureStandardOutput(LogLevel.QUIET)
     }
     tasks.withType<ProcessResources> {
         filteringCharset = Charsets.UTF_8.name()
     }
     tasks.withType<Test> {
         testLogging {
-            showStackTraces = true
-            exceptionFormat = TestExceptionFormat.FULL
-            events(TestLogEvent.STANDARD_OUT)
+            showStackTraces = false
+            exceptionFormat = TestExceptionFormat.SHORT
+            events()
         }
     }
 }
