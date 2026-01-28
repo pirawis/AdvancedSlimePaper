@@ -54,6 +54,7 @@ subprojects {
         options.encoding = Charsets.UTF_8.name()
         options.release = JAVA_VERSION
         options.isFork = true
+        options.compilerArgs.addAll(listOf("-Xlint:-deprecation", "-Xlint:-removal"))
     }
     tasks.withType<Javadoc> {
         options.encoding = Charsets.UTF_8.name()
