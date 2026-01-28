@@ -46,6 +46,31 @@ subprojects {
         maven(PAPER_MAVEN_PUBLIC_URL)
     }
 
+    configurations.all {
+        resolutionStrategy {
+            force("at.yawk.lz4:lz4-java:1.10.3")
+            force("org.apache.commons:commons-lang3:3.18.0")
+            force("org.eclipse.jgit:org.eclipse.jgit:7.2.1.202505142326-r")
+            force("com.google.protobuf:protobuf-java:4.28.2")
+            force("com.fasterxml.jackson.core:jackson-core:2.15.0")
+            force("com.fasterxml.jackson.core:jackson-databind:2.15.0")
+            force("com.fasterxml.jackson.core:jackson-annotations:2.15.0")
+            force("io.netty:netty-handler:4.1.125.Final")
+            force("io.netty:netty-common:4.1.125.Final")
+            force("io.netty:netty-codec:4.1.125.Final")
+            force("io.netty:netty-buffer:4.1.125.Final")
+            force("io.netty:netty-transport:4.1.125.Final")
+            force("io.netty:netty-resolver:4.1.125.Final")
+            force("org.yaml:snakeyaml:2.0")
+            force("com.mysql:mysql-connector-j:9.3.0")
+            force("io.github.classgraph:classgraph:4.8.112")
+            force("org.apache.logging.log4j:log4j-core:2.25.3")
+            force("org.apache.logging.log4j:log4j-api:2.25.3")
+            force("com.nimbusds:nimbus-jose-jwt:10.0.2")
+            force("net.minidev:json-smart:2.5.2")
+        }
+    }
+
     tasks.withType<AbstractArchiveTask>().configureEach {
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true

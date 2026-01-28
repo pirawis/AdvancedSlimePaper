@@ -8,6 +8,8 @@ dependencies {
     compileOnly(project(":api"))
     compileOnly(paperApi())
     implementation(libs.zstd)
+
+    testImplementation(project(":api"))
 }
 
 publishConfiguration {

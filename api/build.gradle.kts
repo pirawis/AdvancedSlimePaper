@@ -8,6 +8,7 @@ dependencies {
     api(libs.adventure.nbt)
 
     compileOnly(paperApi())
+    testRuntimeOnly(paperApi())
 }
 
 publishConfiguration {
