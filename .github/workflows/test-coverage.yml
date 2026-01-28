@@ -21,7 +21,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run tests with coverage
-        run: ./gradlew :api:test :core:test :api:jacocoTestReport :core:jacocoTestReport --continue
+        run: |
+          ./gradlew :api:test :api:jacocoTestReport --continue
+          ./gradlew :core:test :core:jacocoTestReport --continue
+          ./gradlew :importer:test :importer:jacocoTestReport --continue
+          ./gradlew :loaders:file-loader:test :loaders:file-loader:jacocoTestReport --continue
+          ./gradlew :loaders:mysql-loader:test :loaders:mysql-loader:jacocoTestReport --continue
+          ./gradlew :loaders:mongo-loader:test :loaders:mongo-loader:jacocoTestReport --continue
+          ./gradlew :loaders:redis-loader:test :loaders:redis-loader:jacocoTestReport --continue
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5

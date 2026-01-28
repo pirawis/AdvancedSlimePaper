@@ -20,5 +20,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run unit tests
-        run: ./gradlew :api:test :core:test --continue
+      - name: Run all unit tests
+        run: |
+          ./gradlew :api:test :core:test :importer:test --continue
+          ./gradlew :loaders:file-loader:test :loaders:mysql-loader:test --continue
+          ./gradlew :loaders:mongo-loader:test :loaders:redis-loader:test --continue

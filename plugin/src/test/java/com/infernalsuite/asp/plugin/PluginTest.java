@@ -1,0 +1,16 @@
+package com.infernalsuite.asp.plugin;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@DisplayName("Plugin Tests")
+class PluginTest {
+
+    @Test
+    @DisplayName("should verify test framework is working")
+    void shouldVerifyTestFrameworkIsWorking() {
+        assertTrue(true, "JUnit 5 should be working");
+    }
+}
