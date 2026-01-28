@@ -77,9 +77,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: server-build
-          name: "Server Build ${{ github.run_number }}"
+          name: "Server Build"
           body: |
-            ## Server Build ${{ github.run_number }}
+            ## Server Build
 
             **Commit:** `${{ github.sha }}`
 

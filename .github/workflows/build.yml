@@ -63,9 +63,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: plugin-build
-          name: "Plugin Build ${{ github.run_number }}"
+          name: "Plugin Build"
           body: |
-            ## Plugin Build ${{ github.run_number }}
+            ## Plugin Build
 
             **Commit:** `${{ github.sha }}`
 
