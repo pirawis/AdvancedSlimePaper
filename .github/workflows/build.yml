@@ -29,6 +29,11 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/release/1.21.4' }}
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "SurvivorsDev"
+          git config --global user.email "pm@survivorsdev.com"
+
       - name: Apply Patches
         run: ./gradlew applyAllPatches --stacktrace
 
