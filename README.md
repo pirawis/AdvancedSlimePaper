@@ -1,8 +1,9 @@
 # Advanced Slime Paper (ASP)
 
 [![Build Status](https://ci.infernalsuite.com/app/rest/builds/buildType:(id:AdvancedSlimePaper_Build)/statusIcon)](https://ci.infernalsuite.com/viewType.html?buildTypeId=AdvancedSlimePaper_Build&guest=1)
-[![Tests](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test.yml/badge.svg)](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/pirawis/AdvancedSlimePaper/branch/main/graph/badge.svg)](https://codecov.io/gh/pirawis/AdvancedSlimePaper)
+[![Tests](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test-unit.yml/badge.svg)](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test-unit.yml)
+[![Coverage](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test-coverage.yml)
+[![codecov](https://codecov.io/gh/pirawis/AdvancedSlimePaper/branch/release%2F1.21.4/graph/badge.svg)](https://codecov.io/gh/pirawis/AdvancedSlimePaper)
 [![Discord](https://img.shields.io/discord/728826761969426473?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/YevvsMa)
 
 Advanced Slime Paper is a [Paper](https://papermc.io/) fork that implements the **Slime Region Format (SRF)**, originally developed by Hypixel. It provides server administrators with fast world loading, efficient storage, and powerful world management capabilities.
