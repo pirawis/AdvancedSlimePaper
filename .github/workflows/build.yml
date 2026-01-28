@@ -39,17 +39,18 @@ jobs:
           git config --global user.email "pm@survivorsdev.com"
 
       - name: Apply Patches & Build
-        run: |
-          ./gradlew applyAllPatches --parallel --build-cache
-          ./gradlew assemble createMojmapPaperclipJar --parallel --build-cache -x test -x javadoc
+        run: ./gradlew applyAllPatches assemble createMojmapPaperclipJar --parallel --build-cache --no-watch-fs -x test -x javadoc
         env:
-          GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=100 -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true -Dorg.gradle.workers.max=4 -Dkotlin.incremental=true"
+          GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=100 -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true -Dorg.gradle.workers.max=6 -Dkotlin.incremental=true"
 
       - name: Upload Plugin JAR
         uses: actions/upload-artifact@v4
         with:
           name: asp-plugin-build-${{ github.run_number }}
-          path: plugin/build/libs/asp-plugin-*.jar
+          path: |
+            plugin/build/libs/asp-plugin-*.jar
+            !plugin/build/libs/*-javadoc*.jar
+            !plugin/build/libs/*-sources*.jar
           if-no-files-found: ignore
 
       - name: Upload Paperclip JAR
