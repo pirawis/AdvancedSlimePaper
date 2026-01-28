@@ -59,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aspaper-server-build-${{ github.run_number }}
-          path: aspaper-server/build/libs/aspaper-bundler-*-mojmap.jar
+          path: build/libs/*.jar
           if-no-files-found: warn
 
   # Development builds - her commit'te
@@ -94,7 +94,7 @@ jobs:
           tag_name: dev-builds
           name: "Development Builds"
           body: |
-            ## Development Build #${{ github.run_number }}
+            ## Development Build ${{ github.run_number }}
 
             **Branch:** `${{ github.ref_name }}`
             **Commit:** `${{ github.sha }}`
