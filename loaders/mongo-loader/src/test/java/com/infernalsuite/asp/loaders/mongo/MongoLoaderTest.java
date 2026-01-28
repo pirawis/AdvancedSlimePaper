@@ -1,6 +1,8 @@
 package com.infernalsuite.asp.loaders.mongo;
 
 import com.infernalsuite.asp.api.exceptions.UnknownWorldException;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -23,6 +25,12 @@ class MongoLoaderTest {
     @BeforeEach
     void setUp() {
         String uri = mongoDBContainer.getReplicaSetUrl();
+
+        // Clean database before each test for isolation
+        try (MongoClient client = MongoClients.create(uri)) {
+            client.getDatabase("testdb").drop();
+        }
+
         loader = new MongoLoader("testdb", "worlds", null, null, null, null, null, uri);
     }
 
