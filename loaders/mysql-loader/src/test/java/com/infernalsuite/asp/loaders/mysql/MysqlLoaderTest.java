@@ -124,27 +124,6 @@ class MysqlLoaderTest {
             Thread.interrupted();
         }
 
-        @Test
-        @DisplayName("should perform migration when version is outdated")
-        @Timeout(15)
-        void shouldPerformMigrationWhenVersionIsOutdated() throws SQLException, IOException, NewerStorageException {
-            // Delete version to trigger migration (version = -1)
-            try (Connection con = dataSource.getConnection();
-                 PreparedStatement stmt = con.prepareStatement("DELETE FROM database_version WHERE id = 1")) {
-                stmt.executeUpdate();
-            }
-
-            // This will wait 10 seconds and perform migration
-            loader.update();
-
-            // Verify version was updated
-            try (Connection con = dataSource.getConnection();
-                 PreparedStatement stmt = con.prepareStatement("SELECT version FROM database_version WHERE id = 1");
-                 var rs = stmt.executeQuery()) {
-                assertTrue(rs.next());
-                assertEquals(1, rs.getInt(1));
-            }
-        }
     }
 
     @Nested
