@@ -53,14 +53,14 @@ jobs:
         with:
           name: asp-plugin-build-${{ github.run_number }}
           path: plugin/build/libs/asp-plugin*.jar
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
       - name: Upload Server JAR
         uses: actions/upload-artifact@v4
         with:
           name: aspaper-server-build-${{ github.run_number }}
           path: build/libs/*.jar
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   # Development builds - her commit'te
   dev-release:
@@ -88,7 +88,12 @@ jobs:
             fi
           done
 
-      - name: Update dev release
+      - name: Delete old dev release
+        run: gh release delete dev-builds --yes --cleanup-tag || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create dev release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dev-builds
