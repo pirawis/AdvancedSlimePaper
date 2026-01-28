@@ -44,7 +44,7 @@ jobs:
           GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true"
 
       - name: Build
-        run: ./gradlew build createReobfPaperclipJar --parallel --build-cache
+        run: ./gradlew build createMojmapPaperclipJar --parallel --build-cache
         env:
           GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true"
 
@@ -59,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aspaper-server-build-${{ github.run_number }}
-          path: aspaper-server/build/libs/*-paperclip-*.jar
+          path: aspaper-server/build/libs/*.jar
           if-no-files-found: ignore
 
   # Cleanup old caches
