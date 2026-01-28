@@ -31,21 +31,22 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/release/1.21.4' }}
-          gradle-home-cache-includes: |
-            caches
-            notifications
-            jdks
-          gradle-home-cache-cleanup: true
+          cache-cleanup: on-success
 
       - name: Configure Git
         run: |
           git config --global user.name "SurvivorsDev"
           git config --global user.email "pm@survivorsdev.com"
 
-      - name: Apply Patches & Build
-        run: ./gradlew applyAllPatches build --parallel --build-cache -Dorg.gradle.workers.max=4
+      - name: Apply Patches
+        run: ./gradlew applyAllPatches --parallel --build-cache
         env:
-          GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true -Dorg.gradle.configureondemand=true -Dkotlin.incremental=true"
+          GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true"
+
+      - name: Build
+        run: ./gradlew build --parallel --build-cache
+        env:
+          GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true"
 
       - name: Upload Plugin JAR
         uses: actions/upload-artifact@v4
