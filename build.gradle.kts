@@ -57,6 +57,7 @@ subprojects {
     }
     tasks.withType<Javadoc> {
         options.encoding = Charsets.UTF_8.name()
+        (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
     }
     tasks.withType<ProcessResources> {
         filteringCharset = Charsets.UTF_8.name()
