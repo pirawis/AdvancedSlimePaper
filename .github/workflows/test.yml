@@ -1,21 +1,6 @@
 name: Tests
 
 on:
-  push:
-    branches: [main, dev, 'feature/**']
-    paths:
-      - 'api/**'
-      - 'core/**'
-      - 'plugin/**'
-      - 'loaders/**'
-      - 'importer/**'
-      - 'buildSrc/**'
-      - 'build.gradle.kts'
-      - 'settings.gradle.kts'
-      - 'gradle/**'
-      - '.github/workflows/test.yml'
-  pull_request:
-    branches: [main, dev]
   workflow_dispatch:
 
 concurrency:
