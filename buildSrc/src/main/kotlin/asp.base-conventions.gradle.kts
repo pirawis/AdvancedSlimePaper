@@ -3,6 +3,7 @@ import net.kyori.indra.git.IndraGitExtension
 plugins {
     `java-library`
     id("net.kyori.indra.git")
+    jacoco
 }
 
 group = rootProject.providers.gradleProperty("group").get()
@@ -31,6 +32,12 @@ repositories {
 
 dependencies {
 //    api(platform(project(":gradle:platform")))
+
+    // Test dependencies
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.junit.jupiter)
 }
 
 tasks {
@@ -51,4 +58,42 @@ tasks {
             expand("gitCommitId" to (project.the<IndraGitExtension>().commit()?.name ?: "unknown"))
         }
     }
+
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events("passed", "skipped", "failed")
+            showExceptions = true
+            showCauses = true
+            showStackTraces = true
+        }
+        reports {
+            junitXml.required.set(true)
+            html.required.set(true)
+        }
+        finalizedBy(jacocoTestReport)
+    }
+
+    jacocoTestReport {
+        dependsOn(test)
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+            csv.required.set(false)
+        }
+    }
+
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    minimum = "0.0".toBigDecimal() // Start with 0, increase over time
+                }
+            }
+        }
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.12"
 }

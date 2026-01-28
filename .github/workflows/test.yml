@@ -1,0 +1,167 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, dev, 'feature/**']
+    paths:
+      - 'api/**'
+      - 'core/**'
+      - 'plugin/**'
+      - 'loaders/**'
+      - 'importer/**'
+      - 'buildSrc/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit Tests & Coverage
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for accurate coverage reporting
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+
+      - name: Run Tests with Coverage
+        run: |
+          ./gradlew test jacocoTestReport --parallel --build-cache --no-watch-fs --continue
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:+UseG1GC -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports-${{ github.run_number }}
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          retention-days: 14
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports-${{ github.run_number }}
+          path: |
+            **/build/reports/jacoco/
+          retention-days: 14
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        if: always()
+        with:
+          files: |
+            api/build/reports/jacoco/test/jacocoTestReport.xml,
+            core/build/reports/jacoco/test/jacocoTestReport.xml,
+            plugin/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/file-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/mysql-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/mongo-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/redis-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/api-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            importer/build/reports/jacoco/test/jacocoTestReport.xml
+          flags: unittests
+          name: codecov-asp
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            **/build/test-results/**/*.xml
+          check_name: Test Results
+          comment_mode: off
+
+  build-check:
+    name: Build Verification
+    runs-on: ubuntu-24.04
+    needs: test
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+
+      - name: Compile All Modules
+        run: |
+          ./gradlew compileJava compileTestJava --parallel --build-cache --no-watch-fs
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:+UseG1GC -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+      - name: Verify API Module
+        run: ./gradlew :api:check --parallel --build-cache --no-watch-fs -x test
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:+UseG1GC"
+
+      - name: Verify Core Module
+        run: ./gradlew :core:check --parallel --build-cache --no-watch-fs -x test
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:+UseG1GC"
+
+      - name: Verify Plugin Module
+        run: ./gradlew :plugin:check --parallel --build-cache --no-watch-fs -x test
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:+UseG1GC"
+
+  coverage-report:
+    name: Coverage Summary
+    runs-on: ubuntu-24.04
+    needs: test
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Coverage Reports
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports-${{ github.run_number }}
+          path: coverage
+
+      - name: Add Coverage PR Comment
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: |
+            coverage/**/jacocoTestReport.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 0
+          min-coverage-changed-files: 0
+          title: "📊 Coverage Report"
+          update-comment: true
