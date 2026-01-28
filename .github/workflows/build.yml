@@ -39,7 +39,9 @@ jobs:
           git config --global user.email "pm@survivorsdev.com"
 
       - name: Apply Patches & Build
-        run: ./gradlew applyAllPatches assemble createMojmapPaperclipJar --parallel --build-cache --no-watch-fs -x test -x javadoc
+        run: |
+          ./gradlew applyAllPatches --parallel --build-cache --no-watch-fs
+          ./gradlew assemble createMojmapPaperclipJar --parallel --build-cache --no-watch-fs -x test -x javadoc
         env:
           GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=100 -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true -Dorg.gradle.workers.max=6 -Dkotlin.incremental=true"
 
