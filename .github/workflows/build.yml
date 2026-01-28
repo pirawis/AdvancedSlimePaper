@@ -23,8 +23,17 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/release/1.21.4' }}
           cache-cleanup: on-success
+
+      - name: Cache Plugin Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            plugin/build
+            .gradle/caches
+          key: plugin-build-${{ hashFiles('plugin/src/**', 'plugin/build.gradle.kts', 'gradle.properties') }}
+          restore-keys: |
+            plugin-build-
 
       - name: Build Plugin
         run: ./gradlew :plugin:build --parallel --build-cache --no-watch-fs -x test -x javadoc
@@ -92,7 +101,7 @@ jobs:
 
             const cachesToDelete = caches.data.actions_caches
               .sort((a, b) => new Date(b.last_accessed_at) - new Date(a.last_accessed_at))
-              .slice(5);
+              .slice(10);
 
             for (const cache of cachesToDelete) {
               await github.rest.actions.deleteActionsCacheById({
