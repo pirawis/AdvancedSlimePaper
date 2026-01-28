@@ -1,5 +1,6 @@
 package com.infernalsuite.asp.api.world.properties.type;
 
+import net.kyori.adventure.nbt.StringBinaryTag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,78 @@ class SlimePropertyStringTest {
             assertThrows(NullPointerException.class, () ->
                 SlimePropertyString.create(null, "value"));
         }
+
+        @Test
+        @DisplayName("should throw on null validator")
+        @SuppressWarnings("DataFlowIssue")
+        void shouldThrowOnNullValidator() {
+            assertThrows(NullPointerException.class, () ->
+                SlimePropertyString.create("key", "value", null));
+        }
+    }
+
+    @Nested
+    @DisplayName("createTag")
+    class CreateTagTests {
+
+        @Test
+        @DisplayName("should create StringBinaryTag from value")
+        void shouldCreateTag() {
+            SlimePropertyString property = SlimePropertyString.create("test", "");
+            StringBinaryTag tag = property.createTag("hello world");
+
+            assertEquals("hello world", tag.value());
+        }
+
+        @Test
+        @DisplayName("should handle empty string")
+        void shouldHandleEmptyString() {
+            SlimePropertyString property = SlimePropertyString.create("test", "");
+            StringBinaryTag tag = property.createTag("");
+
+            assertEquals("", tag.value());
+        }
+
+        @Test
+        @DisplayName("should handle special characters")
+        void shouldHandleSpecialCharacters() {
+            SlimePropertyString property = SlimePropertyString.create("test", "");
+            StringBinaryTag tag = property.createTag("Hello\nWorld\t!");
+
+            assertEquals("Hello\nWorld\t!", tag.value());
+        }
+
+        @Test
+        @DisplayName("should handle unicode characters")
+        void shouldHandleUnicodeCharacters() {
+            SlimePropertyString property = SlimePropertyString.create("test", "");
+            StringBinaryTag tag = property.createTag("こんにちは世界");
+
+            assertEquals("こんにちは世界", tag.value());
+        }
+    }
+
+    @Nested
+    @DisplayName("readValue")
+    class ReadValueTests {
+
+        @Test
+        @DisplayName("should read value from tag")
+        void shouldReadValue() {
+            SlimePropertyString property = SlimePropertyString.create("test", "");
+            StringBinaryTag tag = StringBinaryTag.stringBinaryTag("test value");
+
+            assertEquals("test value", property.readValue(tag));
+        }
+
+        @Test
+        @DisplayName("should read empty value")
+        void shouldReadEmptyValue() {
+            SlimePropertyString property = SlimePropertyString.create("test", "");
+            StringBinaryTag tag = StringBinaryTag.stringBinaryTag("");
+
+            assertEquals("", property.readValue(tag));
+        }
     }
 
     @Nested
@@ -94,6 +167,29 @@ class SlimePropertyStringTest {
             assertTrue(property.applyValidator("the_end"));
             assertFalse(property.applyValidator("void"));
         }
+
+        @Test
+        @DisplayName("should get validator function")
+        void shouldGetValidatorFunction() {
+            SlimePropertyString property = SlimePropertyString.create("test", "default",
+                value -> value.length() > 3);
+
+            assertNotNull(property.getValidator());
+            assertTrue(property.getValidator().apply("long"));
+            assertFalse(property.getValidator().apply("ab"));
+        }
+    }
+
+    @Nested
+    @DisplayName("getNbtName")
+    class GetNbtNameTests {
+
+        @Test
+        @DisplayName("should return key as nbt name")
+        void shouldReturnKeyAsNbtName() {
+            SlimePropertyString property = SlimePropertyString.create("myNbtKey", "value");
+            assertEquals("myNbtKey", property.getNbtName());
+        }
     }
 
     @Nested
@@ -105,6 +201,23 @@ class SlimePropertyStringTest {
         void shouldContainKey() {
             SlimePropertyString property = SlimePropertyString.create("myKey", "value");
             assertTrue(property.toString().contains("myKey"));
+        }
+    }
+
+    @Nested
+    @DisplayName("roundtrip")
+    class RoundtripTests {
+
+        @Test
+        @DisplayName("should roundtrip value correctly")
+        void shouldRoundtripValue() {
+            SlimePropertyString property = SlimePropertyString.create("test", "");
+            String original = "test roundtrip value";
+
+            StringBinaryTag tag = property.createTag(original);
+            String result = property.readValue(tag);
+
+            assertEquals(original, result);
         }
     }
 }
