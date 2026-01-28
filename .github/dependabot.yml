@@ -1,0 +1,73 @@
+version: 2
+
+registries:
+  maven-central:
+    type: maven-repository
+    url: https://repo.maven.apache.org/maven2
+  paper-repo:
+    type: maven-repository
+    url: https://repo.papermc.io/repository/maven-public/
+
+updates:
+  # Gradle dependencies
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "InfernalSuite/asp-maintainers"
+    labels:
+      - "dependencies"
+      - "gradle"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      # Group JUnit updates together
+      junit:
+        patterns:
+          - "org.junit*"
+          - "junit*"
+      # Group Mockito updates together
+      mockito:
+        patterns:
+          - "org.mockito*"
+      # Group Cloud command framework updates
+      cloud:
+        patterns:
+          - "org.incendo*"
+      # Group Adventure updates
+      adventure:
+        patterns:
+          - "net.kyori*"
+      # Group database drivers
+      database:
+        patterns:
+          - "com.zaxxer*"
+          - "org.mongodb*"
+          - "io.lettuce*"
+    ignore:
+      # Ignore major Paper updates (manual handling required)
+      - dependency-name: "io.papermc.paperweight.patcher"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      # Group all GitHub Actions updates
+      github-actions:
+        patterns:
+          - "*"
