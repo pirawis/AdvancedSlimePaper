@@ -70,8 +70,7 @@ class MongoLoaderTest {
             String host = mongoDBContainer.getHost();
             Integer port = mongoDBContainer.getMappedPort(27017);
 
-            // MongoDB container doesn't have auth by default, but we test the URL construction
-            MongoLoader authLoader = new MongoLoader("testdb4", "worlds4", null, null, "admin", host, port, null);
+            MongoLoader authLoader = new MongoLoader("testdb4", "worlds4", "user", "pass", "admin", host, port, null);
 
             assertNotNull(authLoader);
         }
@@ -90,14 +89,12 @@ class MongoLoaderTest {
         @Test
         @DisplayName("should handle interrupted lock migration gracefully")
         void shouldHandleInterruptedLockMigrationGracefully() {
-            // Insert a document with boolean locked field to trigger migration
             try (MongoClient client = MongoClients.create(uri)) {
                 MongoDatabase db = client.getDatabase("testdb");
                 MongoCollection<Document> collection = db.getCollection("worlds");
                 collection.insertOne(new Document("name", "test_world").append("locked", true));
             }
 
-            // Interrupt the thread to trigger InterruptedException in update()
             Thread testThread = Thread.currentThread();
             Thread interrupter = new Thread(() -> {
                 try {
@@ -108,9 +105,60 @@ class MongoLoaderTest {
             interrupter.start();
 
             assertDoesNotThrow(() -> loader.update());
-
-            // Clear interrupt flag
             Thread.interrupted();
+        }
+
+        @Test
+        @DisplayName("should perform lock migration when old format detected")
+        @Timeout(15)
+        void shouldPerformLockMigrationWhenOldFormatDetected() {
+            // Insert documents with boolean locked field (old format)
+            try (MongoClient client = MongoClients.create(uri)) {
+                MongoDatabase db = client.getDatabase("testdb");
+                MongoCollection<Document> collection = db.getCollection("worlds");
+                collection.insertOne(new Document("name", "world1").append("locked", false));
+                collection.insertOne(new Document("name", "world2").append("locked", true));
+            }
+
+            // This will wait 10 seconds and perform migration
+            assertDoesNotThrow(() -> loader.update());
+
+            // Verify locked field was updated to Long
+            try (MongoClient client = MongoClients.create(uri)) {
+                MongoDatabase db = client.getDatabase("testdb");
+                MongoCollection<Document> collection = db.getCollection("worlds");
+                Document doc = collection.find(new Document("name", "world1")).first();
+                assertNotNull(doc);
+                assertEquals(0L, doc.get("locked"));
+            }
+        }
+
+        @Test
+        @DisplayName("should rename old GridFS collections")
+        void shouldRenameOldGridFSCollections() {
+            // Create old format GridFS collections
+            try (MongoClient client = MongoClients.create(uri)) {
+                MongoDatabase db = client.getDatabase("testdb");
+                db.createCollection("worlds_files.files");
+                db.createCollection("worlds_files.chunks");
+                db.getCollection("worlds_files.files").insertOne(new Document("test", "data"));
+                db.getCollection("worlds_files.chunks").insertOne(new Document("test", "data"));
+            }
+
+            assertDoesNotThrow(() -> loader.update());
+
+            // Verify collections were renamed
+            try (MongoClient client = MongoClients.create(uri)) {
+                MongoDatabase db = client.getDatabase("testdb");
+                boolean hasOldFiles = false;
+                boolean hasNewFiles = false;
+                for (String name : db.listCollectionNames()) {
+                    if (name.equals("worlds_files.files")) hasOldFiles = true;
+                    if (name.equals("worlds.files")) hasNewFiles = true;
+                }
+                assertFalse(hasOldFiles);
+                assertTrue(hasNewFiles);
+            }
         }
     }
 

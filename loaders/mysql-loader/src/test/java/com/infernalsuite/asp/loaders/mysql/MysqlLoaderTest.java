@@ -78,7 +78,6 @@ class MysqlLoaderTest {
         @Test
         @DisplayName("should throw NewerStorageException when storage version is newer")
         void shouldThrowNewerStorageExceptionWhenStorageVersionIsNewer() throws SQLException {
-            // Insert a version higher than CURRENT_DB_VERSION (which is 1)
             try (Connection con = dataSource.getConnection();
                  PreparedStatement stmt = con.prepareStatement(
                          "INSERT INTO database_version (id, version) VALUES (1, 999) " +
@@ -94,7 +93,6 @@ class MysqlLoaderTest {
         @Test
         @DisplayName("should not throw when version matches current")
         void shouldNotThrowWhenVersionMatchesCurrent() throws SQLException {
-            // Insert current version (1)
             try (Connection con = dataSource.getConnection();
                  PreparedStatement stmt = con.prepareStatement(
                          "INSERT INTO database_version (id, version) VALUES (1, 1) " +
@@ -108,16 +106,12 @@ class MysqlLoaderTest {
         @Test
         @DisplayName("should handle interrupted migration gracefully")
         void shouldHandleInterruptedMigrationGracefully() throws SQLException {
-            // Set version to -1 to trigger migration path
             try (Connection con = dataSource.getConnection();
-                 PreparedStatement stmt = con.prepareStatement(
-                         "DELETE FROM database_version WHERE id = 1")) {
+                 PreparedStatement stmt = con.prepareStatement("DELETE FROM database_version WHERE id = 1")) {
                 stmt.executeUpdate();
             }
 
-            // Interrupt the thread before calling update to trigger InterruptedException
             Thread testThread = Thread.currentThread();
-
             Thread interrupter = new Thread(() -> {
                 try {
                     Thread.sleep(100);
@@ -127,9 +121,29 @@ class MysqlLoaderTest {
             interrupter.start();
 
             assertDoesNotThrow(() -> loader.update());
-
-            // Clear interrupt flag
             Thread.interrupted();
+        }
+
+        @Test
+        @DisplayName("should perform migration when version is outdated")
+        @Timeout(15)
+        void shouldPerformMigrationWhenVersionIsOutdated() throws SQLException, IOException, NewerStorageException {
+            // Delete version to trigger migration (version = -1)
+            try (Connection con = dataSource.getConnection();
+                 PreparedStatement stmt = con.prepareStatement("DELETE FROM database_version WHERE id = 1")) {
+                stmt.executeUpdate();
+            }
+
+            // This will wait 10 seconds and perform migration
+            loader.update();
+
+            // Verify version was updated
+            try (Connection con = dataSource.getConnection();
+                 PreparedStatement stmt = con.prepareStatement("SELECT version FROM database_version WHERE id = 1");
+                 var rs = stmt.executeQuery()) {
+                assertTrue(rs.next());
+                assertEquals(1, rs.getInt(1));
+            }
         }
     }
 
