@@ -9,6 +9,12 @@ dependencies {
     api(libs.lettuce)
 
     compileOnly(paperApi())
+
+    testImplementation(project(":api"))
+    testImplementation(libs.testcontainers.core)
+    testImplementation(libs.testcontainers.junit)
+    testImplementation(libs.testcontainers.redis)
+    testImplementation(libs.slf4j.api)
 }
 
 publishConfiguration {

@@ -8,6 +8,12 @@ dependencies {
     compileOnly(paperApi())
 
     api(libs.mongo)
+
+    testImplementation(project(":api"))
+    testImplementation(libs.testcontainers.core)
+    testImplementation(libs.testcontainers.junit)
+    testImplementation(libs.testcontainers.mongodb)
+    testImplementation(libs.slf4j.api)
 }
 
 publishConfiguration {

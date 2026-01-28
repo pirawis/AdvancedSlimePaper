@@ -1,17 +1,123 @@
 package com.infernalsuite.asp.loaders.redis;
 
+import com.infernalsuite.asp.api.exceptions.UnknownWorldException;
 import com.infernalsuite.asp.loaders.redis.util.StringByteCodec;
+import com.redis.testcontainers.RedisContainer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Redis Loader Components")
+@Testcontainers
 class RedisLoaderTest {
+
+    @Container
+    static RedisContainer redisContainer = new RedisContainer("redis:7.0");
+
+    @Nested
+    @DisplayName("RedisLoader Integration Tests")
+    class RedisLoaderIntegrationTests {
+
+        private RedisLoader loader;
+
+        @BeforeEach
+        void setUp() {
+            String uri = redisContainer.getRedisURI();
+            loader = new RedisLoader(uri);
+        }
+
+        @Test
+        @DisplayName("should return false for non-existent world")
+        void shouldReturnFalseForNonExistentWorld() throws IOException {
+            assertFalse(loader.worldExists("nonexistent_" + System.currentTimeMillis()));
+        }
+
+        @Test
+        @DisplayName("should return true after saving world")
+        void shouldReturnTrueAfterSavingWorld() throws IOException {
+            String worldName = "testworld_" + System.currentTimeMillis();
+            byte[] worldData = new byte[]{1, 2, 3, 4, 5};
+            loader.saveWorld(worldName, worldData);
+
+            assertTrue(loader.worldExists(worldName));
+        }
+
+        @Test
+        @DisplayName("should save and read world data")
+        void shouldSaveAndReadWorldData() throws IOException, UnknownWorldException {
+            String worldName = "save_read_" + System.currentTimeMillis();
+            byte[] originalData = new byte[]{10, 20, 30, 40, 50};
+            loader.saveWorld(worldName, originalData);
+
+            byte[] readData = loader.readWorld(worldName);
+
+            assertArrayEquals(originalData, readData);
+        }
+
+        @Test
+        @DisplayName("should throw UnknownWorldException for non-existent world")
+        void shouldThrowUnknownWorldExceptionForNonExistentWorld() {
+            assertThrows(UnknownWorldException.class, () ->
+                loader.readWorld("does_not_exist_" + System.currentTimeMillis())
+            );
+        }
+
+        @Test
+        @DisplayName("should list saved worlds")
+        void shouldListSavedWorlds() throws IOException {
+            String uniqueName = "list_world_" + System.currentTimeMillis();
+            loader.saveWorld(uniqueName, new byte[]{1, 2, 3});
+
+            List<String> worlds = loader.listWorlds();
+
+            assertTrue(worlds.contains(uniqueName));
+        }
+
+        @Test
+        @DisplayName("should delete existing world")
+        void shouldDeleteExistingWorld() throws IOException, UnknownWorldException {
+            String worldName = "to_delete_" + System.currentTimeMillis();
+            loader.saveWorld(worldName, new byte[]{1, 2, 3});
+            assertTrue(loader.worldExists(worldName));
+
+            loader.deleteWorld(worldName);
+
+            assertFalse(loader.worldExists(worldName));
+        }
+
+        @Test
+        @DisplayName("should throw UnknownWorldException when deleting non-existent world")
+        void shouldThrowUnknownWorldExceptionWhenDeletingNonExistentWorld() {
+            assertThrows(UnknownWorldException.class, () ->
+                loader.deleteWorld("nonexistent_delete_" + System.currentTimeMillis())
+            );
+        }
+
+        @Test
+        @DisplayName("should handle large world data")
+        void shouldHandleLargeWorldData() throws IOException, UnknownWorldException {
+            String worldName = "large_world_" + System.currentTimeMillis();
+            byte[] largeData = new byte[1024 * 100]; // 100KB
+            for (int i = 0; i < largeData.length; i++) {
+                largeData[i] = (byte) (i % 256);
+            }
+
+            loader.saveWorld(worldName, largeData);
+            byte[] readData = loader.readWorld(worldName);
+
+            assertArrayEquals(largeData, readData);
+        }
+    }
 
     @Nested
     @DisplayName("StringByteCodec")
