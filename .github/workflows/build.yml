@@ -44,7 +44,7 @@ jobs:
           GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true"
 
       - name: Build
-        run: ./gradlew build --parallel --build-cache
+        run: ./gradlew build createReobfPaperclipJar --parallel --build-cache
         env:
           GRADLE_OPTS: "-Xmx6g -XX:+UseG1GC -XX:+ParallelRefProcEnabled -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=true"
 
@@ -52,14 +52,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: asp-plugin-build-${{ github.run_number }}
-          path: plugin/build/libs/asp-plugin*.jar
+          path: plugin/build/libs/asp-plugin-*.jar
           if-no-files-found: ignore
 
       - name: Upload Server JAR
         uses: actions/upload-artifact@v4
         with:
           name: aspaper-server-build-${{ github.run_number }}
-          path: build/libs/*.jar
+          path: aspaper-server/build/libs/*-paperclip-*.jar
           if-no-files-found: ignore
 
   # Cleanup old caches
