@@ -47,5 +47,25 @@ class SlimeFormatTest {
         void shouldBeVersion13() {
             assertEquals(13, SlimeFormat.SLIME_VERSION);
         }
+
+        @Test
+        @DisplayName("should be positive")
+        void shouldBePositive() {
+            assertTrue(SlimeFormat.SLIME_VERSION > 0);
+        }
+
+        @Test
+        @DisplayName("should fit in a byte")
+        void shouldFitInByte() {
+            assertTrue(SlimeFormat.SLIME_VERSION >= Byte.MIN_VALUE);
+            assertTrue(SlimeFormat.SLIME_VERSION <= Byte.MAX_VALUE);
+        }
+
+        @Test
+        @DisplayName("should be castable to byte without loss")
+        void shouldBeCastableToByteWithoutLoss() {
+            byte versionAsByte = (byte) SlimeFormat.SLIME_VERSION;
+            assertEquals(SlimeFormat.SLIME_VERSION, versionAsByte);
+        }
     }
 }

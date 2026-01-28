@@ -179,6 +179,17 @@ class FileLoaderTest {
         }
 
         @Test
+        @DisplayName("should return single world")
+        void shouldReturnSingleWorld() throws Exception {
+            createWorldFile("singleworld", new byte[]{1});
+
+            List<String> worlds = loader.listWorlds();
+
+            assertEquals(1, worlds.size());
+            assertEquals("singleworld", worlds.get(0));
+        }
+
+        @Test
         @DisplayName("should list all world names")
         void shouldListAllWorldNames() throws Exception {
             createWorldFile("world1", new byte[]{1});

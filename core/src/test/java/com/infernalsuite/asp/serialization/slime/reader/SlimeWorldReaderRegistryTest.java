@@ -86,5 +86,76 @@ class SlimeWorldReaderRegistryTest {
             assertThrows(CorruptedWorldException.class, () ->
                     SlimeWorldReaderRegistry.readWorld(loader, "zipfile", wrongMagic, propertyMap, true));
         }
+
+        @Test
+        @DisplayName("should throw NewerFormatException with correct version in message")
+        void shouldThrowNewerFormatExceptionWithCorrectVersion() throws IOException {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(baos);
+
+            dos.write(SlimeFormat.SLIME_HEADER);
+            dos.writeByte(99);
+
+            byte[] data = baos.toByteArray();
+
+            NewerFormatException exception = assertThrows(NewerFormatException.class, () ->
+                    SlimeWorldReaderRegistry.readWorld(loader, "future", data, propertyMap, false));
+
+            assertTrue(exception.getMessage().contains("99"));
+        }
+
+        @Test
+        @DisplayName("should throw CorruptedWorldException with world name in message")
+        void shouldIncludeWorldNameInCorruptedWorldException() {
+            byte[] invalidData = new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
+            String worldName = "my_broken_world";
+
+            CorruptedWorldException exception = assertThrows(CorruptedWorldException.class, () ->
+                    SlimeWorldReaderRegistry.readWorld(loader, worldName, invalidData, propertyMap, true));
+
+            assertTrue(exception.getMessage().contains(worldName));
+        }
+
+        @Test
+        @DisplayName("should handle readOnly flag in call")
+        void shouldHandleReadOnlyFlag() throws IOException {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(baos);
+
+            dos.write(SlimeFormat.SLIME_HEADER);
+            dos.writeByte(SlimeFormat.SLIME_VERSION + 10);
+
+            byte[] data = baos.toByteArray();
+
+            assertThrows(NewerFormatException.class, () ->
+                    SlimeWorldReaderRegistry.readWorld(loader, "readonly_test", data, propertyMap, true));
+
+            assertThrows(NewerFormatException.class, () ->
+                    SlimeWorldReaderRegistry.readWorld(loader, "writable_test", data, propertyMap, false));
+        }
+    }
+
+    @Nested
+    @DisplayName("SlimeFormat constants")
+    class SlimeFormatConstantsTests {
+
+        @Test
+        @DisplayName("should have valid slime header")
+        void shouldHaveValidSlimeHeader() {
+            assertNotNull(SlimeFormat.SLIME_HEADER);
+            assertTrue(SlimeFormat.SLIME_HEADER.length > 0);
+        }
+
+        @Test
+        @DisplayName("should have current version as 13")
+        void shouldHaveCurrentVersion13() {
+            assertEquals(13, SlimeFormat.SLIME_VERSION);
+        }
+
+        @Test
+        @DisplayName("header should be 2 bytes")
+        void headerShouldBe2Bytes() {
+            assertEquals(2, SlimeFormat.SLIME_HEADER.length);
+        }
     }
 }
