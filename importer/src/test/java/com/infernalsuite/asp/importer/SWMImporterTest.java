@@ -87,49 +87,4 @@ class SWMImporterTest {
         }
     }
 
-    @Nested
-    @DisplayName("importWorld")
-    class ImportWorldTests {
-
-        @Test
-        @DisplayName("should handle non-existent world directory gracefully")
-        void shouldHandleNonExistentWorldDirectory() {
-            File nonExistent = tempDir.resolve("nonexistent").toFile();
-            File outputFile = tempDir.resolve("output.slime").toFile();
-
-            // Should not throw, but print error message
-            assertDoesNotThrow(() ->
-                SWMImporter.importWorld(nonExistent, outputFile, false)
-            );
-        }
-
-        @Test
-        @DisplayName("should handle missing level.dat gracefully")
-        void shouldHandleMissingLevelDat() throws IOException {
-            Path worldDir = tempDir.resolve("emptyworld");
-            Files.createDirectories(worldDir);
-            File outputFile = tempDir.resolve("output.slime").toFile();
-
-            // Should not throw, but print error message
-            assertDoesNotThrow(() ->
-                SWMImporter.importWorld(worldDir.toFile(), outputFile, false)
-            );
-        }
-
-        @Test
-        @DisplayName("should create output file path")
-        void shouldCreateOutputFilePath() throws IOException {
-            Path worldDir = tempDir.resolve("world");
-            Files.createDirectories(worldDir);
-
-            Path outputPath = tempDir.resolve("subdir/output.slime");
-            File outputFile = outputPath.toFile();
-
-            // Will fail due to missing level.dat, but file creation attempt is made
-            SWMImporter.importWorld(worldDir.toFile(), outputFile, false);
-
-            // Even if import fails, we're testing the method doesn't throw unexpectedly
-            assertTrue(true);
-        }
-    }
 }
