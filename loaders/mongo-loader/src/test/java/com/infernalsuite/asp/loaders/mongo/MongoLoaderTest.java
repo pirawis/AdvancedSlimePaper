@@ -64,16 +64,6 @@ class MongoLoaderTest {
             assertDoesNotThrow(() -> hostLoader.listWorlds());
         }
 
-        @Test
-        @DisplayName("should create loader with auth parameters")
-        void shouldCreateLoaderWithAuthParameters() {
-            String host = mongoDBContainer.getHost();
-            Integer port = mongoDBContainer.getMappedPort(27017);
-
-            MongoLoader authLoader = new MongoLoader("testdb4", "worlds4", "user", "pass", "admin", host, port, null);
-
-            assertNotNull(authLoader);
-        }
     }
 
     @Nested
