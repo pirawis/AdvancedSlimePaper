@@ -173,7 +173,7 @@ class SlimePropertyFloatTest {
         @DisplayName("should return key as nbt name")
         void shouldReturnKeyAsNbtName() {
             SlimePropertyFloat property = SlimePropertyFloat.create("spawnYaw", 0.0f);
-            assertEquals("spawnYaw", property.getNbtName());
+            assertEquals("spawnYaw", property.getKey());
         }
     }
 

@@ -44,19 +44,19 @@ class SlimePropertiesTest {
         @Test
         @DisplayName("SPAWN_X should have correct key")
         void spawnXShouldHaveCorrectKey() {
-            assertEquals("spawnX", SlimeProperties.SPAWN_X.getNbtName());
+            assertEquals("spawnX", SlimeProperties.SPAWN_X.getKey());
         }
 
         @Test
         @DisplayName("SPAWN_Y should have correct key")
         void spawnYShouldHaveCorrectKey() {
-            assertEquals("spawnY", SlimeProperties.SPAWN_Y.getNbtName());
+            assertEquals("spawnY", SlimeProperties.SPAWN_Y.getKey());
         }
 
         @Test
         @DisplayName("SPAWN_Z should have correct key")
         void spawnZShouldHaveCorrectKey() {
-            assertEquals("spawnZ", SlimeProperties.SPAWN_Z.getNbtName());
+            assertEquals("spawnZ", SlimeProperties.SPAWN_Z.getKey());
         }
     }
 
@@ -73,38 +73,38 @@ class SlimePropertiesTest {
         @Test
         @DisplayName("should validate peaceful")
         void shouldValidatePeaceful() {
-            assertTrue(SlimeProperties.DIFFICULTY.getValidator().test("peaceful"));
+            assertTrue(SlimeProperties.DIFFICULTY.getValidator().apply("peaceful"));
         }
 
         @Test
         @DisplayName("should validate easy")
         void shouldValidateEasy() {
-            assertTrue(SlimeProperties.DIFFICULTY.getValidator().test("easy"));
+            assertTrue(SlimeProperties.DIFFICULTY.getValidator().apply("easy"));
         }
 
         @Test
         @DisplayName("should validate normal")
         void shouldValidateNormal() {
-            assertTrue(SlimeProperties.DIFFICULTY.getValidator().test("normal"));
+            assertTrue(SlimeProperties.DIFFICULTY.getValidator().apply("normal"));
         }
 
         @Test
         @DisplayName("should validate hard")
         void shouldValidateHard() {
-            assertTrue(SlimeProperties.DIFFICULTY.getValidator().test("hard"));
+            assertTrue(SlimeProperties.DIFFICULTY.getValidator().apply("hard"));
         }
 
         @Test
         @DisplayName("should validate case insensitive")
         void shouldValidateCaseInsensitive() {
-            assertTrue(SlimeProperties.DIFFICULTY.getValidator().test("PEACEFUL"));
-            assertTrue(SlimeProperties.DIFFICULTY.getValidator().test("Normal"));
+            assertTrue(SlimeProperties.DIFFICULTY.getValidator().apply("PEACEFUL"));
+            assertTrue(SlimeProperties.DIFFICULTY.getValidator().apply("Normal"));
         }
 
         @Test
         @DisplayName("should reject invalid difficulty")
         void shouldRejectInvalidDifficulty() {
-            assertFalse(SlimeProperties.DIFFICULTY.getValidator().test("impossible"));
+            assertFalse(SlimeProperties.DIFFICULTY.getValidator().apply("impossible"));
         }
     }
 
@@ -174,25 +174,25 @@ class SlimePropertiesTest {
         @Test
         @DisplayName("should validate normal")
         void shouldValidateNormal() {
-            assertTrue(SlimeProperties.ENVIRONMENT.getValidator().test("normal"));
+            assertTrue(SlimeProperties.ENVIRONMENT.getValidator().apply("normal"));
         }
 
         @Test
         @DisplayName("should validate nether")
         void shouldValidateNether() {
-            assertTrue(SlimeProperties.ENVIRONMENT.getValidator().test("nether"));
+            assertTrue(SlimeProperties.ENVIRONMENT.getValidator().apply("nether"));
         }
 
         @Test
         @DisplayName("should validate the_end")
         void shouldValidateTheEnd() {
-            assertTrue(SlimeProperties.ENVIRONMENT.getValidator().test("the_end"));
+            assertTrue(SlimeProperties.ENVIRONMENT.getValidator().apply("the_end"));
         }
 
         @Test
         @DisplayName("should reject invalid environment")
         void shouldRejectInvalidEnvironment() {
-            assertFalse(SlimeProperties.ENVIRONMENT.getValidator().test("custom"));
+            assertFalse(SlimeProperties.ENVIRONMENT.getValidator().apply("custom"));
         }
     }
 
@@ -209,19 +209,19 @@ class SlimePropertiesTest {
         @Test
         @DisplayName("should validate all world types")
         void shouldValidateAllWorldTypes() {
-            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().test("default"));
-            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().test("flat"));
-            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().test("large_biomes"));
-            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().test("amplified"));
-            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().test("customized"));
-            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().test("debug_all_block_states"));
-            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().test("default_1_1"));
+            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().apply("default"));
+            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().apply("flat"));
+            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().apply("large_biomes"));
+            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().apply("amplified"));
+            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().apply("customized"));
+            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().apply("debug_all_block_states"));
+            assertTrue(SlimeProperties.WORLD_TYPE.getValidator().apply("default_1_1"));
         }
 
         @Test
         @DisplayName("should reject invalid world type")
         void shouldRejectInvalidWorldType() {
-            assertFalse(SlimeProperties.WORLD_TYPE.getValidator().test("invalid"));
+            assertFalse(SlimeProperties.WORLD_TYPE.getValidator().apply("invalid"));
         }
     }
 
@@ -238,19 +238,19 @@ class SlimePropertiesTest {
         @Test
         @DisplayName("should validate aggressive")
         void shouldValidateAggressive() {
-            assertTrue(SlimeProperties.CHUNK_PRUNING.getValidator().test("aggressive"));
+            assertTrue(SlimeProperties.CHUNK_PRUNING.getValidator().apply("aggressive"));
         }
 
         @Test
         @DisplayName("should validate never")
         void shouldValidateNever() {
-            assertTrue(SlimeProperties.CHUNK_PRUNING.getValidator().test("never"));
+            assertTrue(SlimeProperties.CHUNK_PRUNING.getValidator().apply("never"));
         }
 
         @Test
         @DisplayName("should reject invalid pruning value")
         void shouldRejectInvalidPruningValue() {
-            assertFalse(SlimeProperties.CHUNK_PRUNING.getValidator().test("sometimes"));
+            assertFalse(SlimeProperties.CHUNK_PRUNING.getValidator().apply("sometimes"));
         }
     }
 
@@ -311,9 +311,9 @@ class SlimePropertiesTest {
         }
 
         @Test
-        @DisplayName("should have correct nbt name")
-        void shouldHaveCorrectNbtName() {
-            assertEquals("seaLevel", SlimeProperties.SEA_LEVEL.getNbtName());
+        @DisplayName("should have correct key")
+        void shouldHaveCorrectKey() {
+            assertEquals("seaLevel", SlimeProperties.SEA_LEVEL.getKey());
         }
     }
 

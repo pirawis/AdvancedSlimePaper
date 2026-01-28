@@ -188,7 +188,7 @@ class SlimePropertyStringTest {
         @DisplayName("should return key as nbt name")
         void shouldReturnKeyAsNbtName() {
             SlimePropertyString property = SlimePropertyString.create("myNbtKey", "value");
-            assertEquals("myNbtKey", property.getNbtName());
+            assertEquals("myNbtKey", property.getKey());
         }
     }
 

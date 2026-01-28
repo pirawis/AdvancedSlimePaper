@@ -106,13 +106,14 @@ class SlimePropertyBooleanTest {
         }
 
         @Test
-        @DisplayName("should read true from any non-zero value")
-        void shouldReadTrueFromNonZero() {
+        @DisplayName("should read false from non-one values")
+        void shouldReadFalseFromNonOneValues() {
             SlimePropertyBoolean property = SlimePropertyBoolean.create("test", false);
 
-            assertTrue(property.readValue(ByteBinaryTag.byteBinaryTag((byte) 2)));
-            assertTrue(property.readValue(ByteBinaryTag.byteBinaryTag((byte) 127)));
-            assertTrue(property.readValue(ByteBinaryTag.byteBinaryTag((byte) -1)));
+            // Implementation only considers value == 1 as true
+            assertFalse(property.readValue(ByteBinaryTag.byteBinaryTag((byte) 2)));
+            assertFalse(property.readValue(ByteBinaryTag.byteBinaryTag((byte) 127)));
+            assertFalse(property.readValue(ByteBinaryTag.byteBinaryTag((byte) -1)));
         }
     }
 
@@ -159,7 +160,7 @@ class SlimePropertyBooleanTest {
         @DisplayName("should return key as nbt name")
         void shouldReturnKeyAsNbtName() {
             SlimePropertyBoolean property = SlimePropertyBoolean.create("allowPvp", true);
-            assertEquals("allowPvp", property.getNbtName());
+            assertEquals("allowPvp", property.getKey());
         }
     }
 

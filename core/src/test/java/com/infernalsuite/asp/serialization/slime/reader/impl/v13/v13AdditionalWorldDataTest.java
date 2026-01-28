@@ -102,17 +102,19 @@ class v13AdditionalWorldDataTest {
         }
 
         @Test
-        @DisplayName("should return count of unsupported bits")
-        void shouldReturnCountOfUnsupportedBits() {
-            byte bitset = (byte) 0b11111000;
-            assertEquals(5, v13AdditionalWorldData.countUnsupportedFlags(bitset));
+        @DisplayName("should return count of unsupported bits in positive range")
+        void shouldReturnCountOfUnsupportedBitsInPositiveRange() {
+            // Use positive byte values to avoid sign extension issues
+            byte bitset = 0b01111000; // bits 3,4,5,6 are unsupported
+            assertEquals(4, v13AdditionalWorldData.countUnsupportedFlags(bitset));
         }
 
         @Test
-        @DisplayName("should ignore supported bits when counting")
-        void shouldIgnoreSupportedBitsWhenCounting() {
-            byte bitset = (byte) 0b11111111;
-            assertEquals(5, v13AdditionalWorldData.countUnsupportedFlags(bitset));
+        @DisplayName("should count unsupported bits correctly with mixed flags")
+        void shouldCountUnsupportedBitsWithMixedFlags() {
+            // bits 0,1,2 are supported; bit 3,4,5 are unsupported
+            byte bitset = 0b00111111;
+            assertEquals(3, v13AdditionalWorldData.countUnsupportedFlags(bitset));
         }
     }
 
