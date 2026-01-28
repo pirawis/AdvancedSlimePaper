@@ -1,8 +1,8 @@
 # Advanced Slime Paper (ASP)
 
 [![Build Status](https://ci.infernalsuite.com/app/rest/builds/buildType:(id:AdvancedSlimePaper_Build)/statusIcon)](https://ci.infernalsuite.com/viewType.html?buildTypeId=AdvancedSlimePaper_Build&guest=1)
-[![Tests](https://github.com/InfernalSuite/AdvancedSlimePaper/actions/workflows/test.yml/badge.svg)](https://github.com/InfernalSuite/AdvancedSlimePaper/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/InfernalSuite/AdvancedSlimePaper/branch/main/graph/badge.svg)](https://codecov.io/gh/InfernalSuite/AdvancedSlimePaper)
+[![Tests](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test.yml/badge.svg)](https://github.com/pirawis/AdvancedSlimePaper/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/pirawis/AdvancedSlimePaper/branch/main/graph/badge.svg)](https://codecov.io/gh/pirawis/AdvancedSlimePaper)
 [![Discord](https://img.shields.io/discord/728826761969426473?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/YevvsMa)
 
 Advanced Slime Paper is a [Paper](https://papermc.io/) fork that implements the **Slime Region Format (SRF)**, originally developed by Hypixel. It provides server administrators with fast world loading, efficient storage, and powerful world management capabilities.
@@ -122,7 +122,7 @@ api.loadWorld(world, true);
 ### Build Commands
 
 ```bash
-git clone https://github.com/InfernalSuite/AdvancedSlimePaper.git
+git clone https://github.com/pirawis/AdvancedSlimePaper.git
 cd AdvancedSlimePaper
 ./gradlew applyPatches
 ./gradlew createReobfBundlerJar
@@ -165,7 +165,7 @@ See [Commands & Permissions](.docs/usage/commands-and-permissions.md) for full d
 ## Support
 
 - **Discord**: [discord.gg/YevvsMa](https://discord.gg/YevvsMa)
-- **Issues**: [GitHub Issues](https://github.com/InfernalSuite/AdvancedSlimePaper/issues)
+- **Issues**: [GitHub Issues](https://github.com/pirawis/AdvancedSlimePaper/issues)
 
 ## Credits
 
