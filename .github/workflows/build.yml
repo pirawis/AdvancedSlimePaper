@@ -1,12 +1,7 @@
-name: Build Plugin
+name: Plugin Build
 
 on:
-  push:
-    branches:
-      - 'release/**'
-  pull_request:
-    branches:
-      - 'release/**'
+  workflow_dispatch:
 
 env:
   BUILD_NUMBER: ${{ github.run_number }}
@@ -39,16 +34,15 @@ jobs:
       - name: Upload Plugin JAR
         uses: actions/upload-artifact@v4
         with:
-          name: asp-plugin-build-${{ github.run_number }}
+          name: asp-plugin
           path: |
             plugin/build/libs/asp-plugin-*.jar
             !plugin/build/libs/*-javadoc*.jar
             !plugin/build/libs/*-sources*.jar
           if-no-files-found: error
 
-  dev-release:
+  release:
     needs: build
-    if: github.ref == 'refs/heads/release/1.21.4' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -57,28 +51,25 @@ jobs:
       - name: Download plugin artifact
         uses: actions/download-artifact@v4
         with:
-          name: asp-plugin-build-${{ github.run_number }}
+          name: asp-plugin
           path: release-files
 
-      - name: Delete old dev release
-        run: gh release delete dev-builds --yes --cleanup-tag || true
+      - name: Delete old release
+        run: gh release delete plugin-build --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Create dev release
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: dev-builds
-          name: "Development Build ${{ github.run_number }}"
+          tag_name: plugin-build
+          name: "Plugin Build ${{ github.run_number }}"
           body: |
-            ## Plugin Development Build ${{ github.run_number }}
+            ## Plugin Build ${{ github.run_number }}
 
-            **Branch:** `${{ github.ref_name }}`
             **Commit:** `${{ github.sha }}`
 
-            ⚠️ This is a development build and may be unstable.
-
-            For full server builds, check [Releases](https://github.com/${{ github.repository }}/releases).
+            ⚠️ Development build - may be unstable.
           files: release-files/*.jar
           prerelease: true
           make_latest: false
@@ -104,7 +95,6 @@ jobs:
               .slice(5);
 
             for (const cache of cachesToDelete) {
-              console.log(`Deleting cache: ${cache.key}`);
               await github.rest.actions.deleteActionsCacheById({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
