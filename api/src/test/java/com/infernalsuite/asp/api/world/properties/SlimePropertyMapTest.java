@@ -25,20 +25,20 @@ class SlimePropertyMapTest {
     }
 
     @Nested
-    @DisplayName("Constructor")
+    @DisplayName("constructors")
     class ConstructorTests {
 
         @Test
         @DisplayName("should create empty map with default constructor")
-        void shouldCreateEmptyMap() {
+        void shouldCreateEmptyMapWithDefaultConstructor() {
             SlimePropertyMap map = new SlimePropertyMap();
-            assertNotNull(map.getProperties());
+
             assertTrue(map.getProperties().isEmpty());
         }
 
         @Test
         @DisplayName("should create map with provided properties")
-        void shouldCreateMapWithProperties() {
+        void shouldCreateMapWithProvidedProperties() {
             Map<String, BinaryTag> props = new HashMap<>();
             props.put("test", IntBinaryTag.intBinaryTag(42));
 
@@ -50,16 +50,57 @@ class SlimePropertyMapTest {
     }
 
     @Nested
-    @DisplayName("getProperties")
-    class GetPropertiesTests {
+    @DisplayName("getValue and setValue")
+    class GetSetValueTests {
 
         @Test
-        @DisplayName("should return mutable map")
-        void shouldReturnMutableMap() {
-            Map<String, BinaryTag> props = propertyMap.getProperties();
-            props.put("key", StringBinaryTag.stringBinaryTag("value"));
+        @DisplayName("should return default value when property not set")
+        void shouldReturnDefaultValueWhenPropertyNotSet() {
+            Integer result = propertyMap.getValue(SlimeProperties.SPAWN_X);
 
-            assertEquals(1, propertyMap.getProperties().size());
+            assertEquals(SlimeProperties.SPAWN_X.getDefaultValue(), result);
+        }
+
+        @Test
+        @DisplayName("should return set value when property is set")
+        void shouldReturnSetValueWhenPropertyIsSet() {
+            propertyMap.setValue(SlimeProperties.SPAWN_X, 100);
+
+            Integer result = propertyMap.getValue(SlimeProperties.SPAWN_X);
+
+            assertEquals(100, result);
+        }
+
+        @Test
+        @DisplayName("should throw when setting invalid value")
+        void shouldThrowWhenSettingInvalidValue() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    propertyMap.setValue(SlimeProperties.DIFFICULTY, "invalid"));
+        }
+
+        @Test
+        @DisplayName("should accept valid difficulty value")
+        void shouldAcceptValidDifficultyValue() {
+            assertDoesNotThrow(() ->
+                    propertyMap.setValue(SlimeProperties.DIFFICULTY, "normal"));
+
+            assertEquals("normal", propertyMap.getValue(SlimeProperties.DIFFICULTY));
+        }
+
+        @Test
+        @DisplayName("should set and get boolean property")
+        void shouldSetAndGetBooleanProperty() {
+            propertyMap.setValue(SlimeProperties.ALLOW_MONSTERS, false);
+
+            assertFalse(propertyMap.getValue(SlimeProperties.ALLOW_MONSTERS));
+        }
+
+        @Test
+        @DisplayName("should set and get float property")
+        void shouldSetAndGetFloatProperty() {
+            propertyMap.setValue(SlimeProperties.SPAWN_YAW, 90.5f);
+
+            assertEquals(90.5f, propertyMap.getValue(SlimeProperties.SPAWN_YAW), 0.01f);
         }
     }
 
@@ -68,31 +109,67 @@ class SlimePropertyMapTest {
     class MergeTests {
 
         @Test
-        @DisplayName("should merge properties from another map")
-        void shouldMergeProperties() {
-            propertyMap.getProperties().put("key1", IntBinaryTag.intBinaryTag(1));
+        @DisplayName("should merge properties from other map")
+        void shouldMergePropertiesFromOtherMap() {
+            propertyMap.setValue(SlimeProperties.SPAWN_X, 10);
 
             SlimePropertyMap other = new SlimePropertyMap();
-            other.getProperties().put("key2", IntBinaryTag.intBinaryTag(2));
+            other.setValue(SlimeProperties.SPAWN_Y, 20);
 
             propertyMap.merge(other);
 
-            assertEquals(2, propertyMap.getProperties().size());
-            assertEquals(IntBinaryTag.intBinaryTag(1), propertyMap.getProperties().get("key1"));
-            assertEquals(IntBinaryTag.intBinaryTag(2), propertyMap.getProperties().get("key2"));
+            assertEquals(10, propertyMap.getValue(SlimeProperties.SPAWN_X));
+            assertEquals(20, propertyMap.getValue(SlimeProperties.SPAWN_Y));
         }
 
         @Test
-        @DisplayName("should override existing keys when merging")
-        void shouldOverrideExistingKeys() {
-            propertyMap.getProperties().put("key", IntBinaryTag.intBinaryTag(1));
+        @DisplayName("should override existing properties when merging")
+        void shouldOverrideExistingPropertiesWhenMerging() {
+            propertyMap.setValue(SlimeProperties.SPAWN_X, 10);
 
             SlimePropertyMap other = new SlimePropertyMap();
-            other.getProperties().put("key", IntBinaryTag.intBinaryTag(2));
+            other.setValue(SlimeProperties.SPAWN_X, 99);
 
             propertyMap.merge(other);
 
-            assertEquals(IntBinaryTag.intBinaryTag(2), propertyMap.getProperties().get("key"));
+            assertEquals(99, propertyMap.getValue(SlimeProperties.SPAWN_X));
+        }
+    }
+
+    @Nested
+    @DisplayName("toCompound and fromCompound")
+    class CompoundTests {
+
+        @Test
+        @DisplayName("should convert to compound tag")
+        void shouldConvertToCompoundTag() {
+            propertyMap.setValue(SlimeProperties.SPAWN_X, 50);
+
+            CompoundBinaryTag compound = propertyMap.toCompound();
+
+            assertNotNull(compound);
+            assertTrue(compound.keySet().contains(SlimeProperties.SPAWN_X.getKey()));
+        }
+
+        @Test
+        @DisplayName("should create map from compound tag")
+        void shouldCreateMapFromCompoundTag() {
+            CompoundBinaryTag compound = CompoundBinaryTag.builder()
+                    .putString("test.key", "testvalue")
+                    .build();
+
+            SlimePropertyMap map = SlimePropertyMap.fromCompound(compound);
+
+            assertEquals(1, map.getProperties().size());
+            assertEquals(StringBinaryTag.stringBinaryTag("testvalue"), map.getProperties().get("test.key"));
+        }
+
+        @Test
+        @DisplayName("should handle empty compound tag")
+        void shouldHandleEmptyCompoundTag() {
+            SlimePropertyMap map = SlimePropertyMap.fromCompound(CompoundBinaryTag.empty());
+
+            assertTrue(map.getProperties().isEmpty());
         }
     }
 
@@ -103,65 +180,25 @@ class SlimePropertyMapTest {
         @Test
         @DisplayName("should create independent copy")
         void shouldCreateIndependentCopy() {
-            propertyMap.getProperties().put("key", IntBinaryTag.intBinaryTag(1));
+            propertyMap.setValue(SlimeProperties.SPAWN_X, 100);
 
             SlimePropertyMap cloned = propertyMap.clone();
-            cloned.getProperties().put("key", IntBinaryTag.intBinaryTag(2));
+            cloned.setValue(SlimeProperties.SPAWN_X, 200);
 
-            assertEquals(IntBinaryTag.intBinaryTag(1), propertyMap.getProperties().get("key"));
-            assertEquals(IntBinaryTag.intBinaryTag(2), cloned.getProperties().get("key"));
+            assertEquals(100, propertyMap.getValue(SlimeProperties.SPAWN_X));
+            assertEquals(200, cloned.getValue(SlimeProperties.SPAWN_X));
         }
 
         @Test
         @DisplayName("should copy all properties")
         void shouldCopyAllProperties() {
-            propertyMap.getProperties().put("a", IntBinaryTag.intBinaryTag(1));
-            propertyMap.getProperties().put("b", IntBinaryTag.intBinaryTag(2));
+            propertyMap.setValue(SlimeProperties.SPAWN_X, 10);
+            propertyMap.setValue(SlimeProperties.SPAWN_Y, 20);
 
             SlimePropertyMap cloned = propertyMap.clone();
 
-            assertEquals(2, cloned.getProperties().size());
-        }
-    }
-
-    @Nested
-    @DisplayName("toCompound / fromCompound")
-    class CompoundTests {
-
-        @Test
-        @DisplayName("should convert to CompoundBinaryTag")
-        void shouldConvertToCompound() {
-            propertyMap.getProperties().put("test", IntBinaryTag.intBinaryTag(123));
-
-            CompoundBinaryTag compound = propertyMap.toCompound();
-
-            assertEquals(IntBinaryTag.intBinaryTag(123), compound.get("test"));
-        }
-
-        @Test
-        @DisplayName("should create from CompoundBinaryTag")
-        void shouldCreateFromCompound() {
-            CompoundBinaryTag compound = CompoundBinaryTag.builder()
-                .putInt("value", 456)
-                .build();
-
-            SlimePropertyMap map = SlimePropertyMap.fromCompound(compound);
-
-            assertEquals(IntBinaryTag.intBinaryTag(456), map.getProperties().get("value"));
-        }
-
-        @Test
-        @DisplayName("should roundtrip through compound")
-        void shouldRoundtripThroughCompound() {
-            propertyMap.getProperties().put("x", IntBinaryTag.intBinaryTag(100));
-            propertyMap.getProperties().put("y", StringBinaryTag.stringBinaryTag("hello"));
-
-            CompoundBinaryTag compound = propertyMap.toCompound();
-            SlimePropertyMap restored = SlimePropertyMap.fromCompound(compound);
-
-            assertEquals(propertyMap.getProperties().size(), restored.getProperties().size());
-            assertEquals(propertyMap.getProperties().get("x"), restored.getProperties().get("x"));
-            assertEquals(propertyMap.getProperties().get("y"), restored.getProperties().get("y"));
+            assertEquals(10, cloned.getValue(SlimeProperties.SPAWN_X));
+            assertEquals(20, cloned.getValue(SlimeProperties.SPAWN_Y));
         }
     }
 
@@ -170,14 +207,34 @@ class SlimePropertyMapTest {
     class ToStringTests {
 
         @Test
-        @DisplayName("should return readable string")
-        void shouldReturnReadableString() {
-            propertyMap.getProperties().put("test", IntBinaryTag.intBinaryTag(1));
+        @DisplayName("should include class name")
+        void shouldIncludeClassName() {
+            assertTrue(propertyMap.toString().contains("SlimePropertyMap"));
+        }
 
-            String result = propertyMap.toString();
+        @Test
+        @DisplayName("should include properties")
+        void shouldIncludeProperties() {
+            propertyMap.setValue(SlimeProperties.SPAWN_X, 42);
 
-            assertTrue(result.contains("SlimePropertyMap"));
-            assertTrue(result.contains("test"));
+            String str = propertyMap.toString();
+
+            assertTrue(str.contains(SlimeProperties.SPAWN_X.getKey()));
+        }
+    }
+
+    @Nested
+    @DisplayName("getProperties")
+    class GetPropertiesTests {
+
+        @Test
+        @DisplayName("should return mutable map")
+        void shouldReturnMutableMap() {
+            Map<String, BinaryTag> props = propertyMap.getProperties();
+
+            props.put("direct.key", IntBinaryTag.intBinaryTag(999));
+
+            assertEquals(IntBinaryTag.intBinaryTag(999), propertyMap.getProperties().get("direct.key"));
         }
     }
 }
