@@ -10,6 +10,7 @@ dependencies {
     implementation(libs.zstd)
 
     testImplementation(project(":api"))
+    testImplementation(paperApi())
 }
 
 publishConfiguration {
