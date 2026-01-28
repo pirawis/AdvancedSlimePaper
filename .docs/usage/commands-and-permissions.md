@@ -1,112 +1,312 @@
 # Commands & Permissions
 
-This pages contains all the commands inside ASWM, alongside their respective permissions and usages. Arguments within angle brackets are required, and the ones within square brackets are optional.
+This page lists all commands available in AdvancedSlimePaper, along with their permissions and usage.
 
-The `swm.*` permission will grant access to all commands.
+**Command Aliases:** `/swm`, `/aswm`, `/swp`
 
-## General commands
+**Master Permission:** `swm.*` grants access to all commands.
+
+## Notation
+
+- `<required>` - Required argument
+- `[optional]` - Optional argument
+
+---
+
+## General Commands
 
 ### /swm help
-Permission required: none.<br>
-Usage: `/swm help`<br>
-Description: Shows the plugin's help page, containing only the commands you have access to.
 
-### /swm debug
-Permission required: `swm.debug`<br>
-Usage: `/swm debug`<br>
-Description: Toggles debug messages.
+Shows available commands based on your permissions.
+
+| | |
+|---|---|
+| **Permission** | None |
+| **Usage** | `/swm help` |
+
+---
 
 ### /swm version
-Permission required: none.<br>
-Usage: `/swm version`<br>
-Description: Shows the plugin version.
+
+Shows the plugin version.
+
+| | |
+|---|---|
+| **Permission** | None |
+| **Usage** | `/swm version` |
+
+---
+
+### /swm debug
+
+Toggles debug message output.
+
+| | |
+|---|---|
+| **Permission** | `swm.debug` |
+| **Usage** | `/swm debug` |
+
+---
 
 ### /swm reload
-Permission required: `swm.reload`
-Usage: `/swm reload`<br>
-Since version: 1.1.0.<br>
-Description: Reloads the config files.
+
+Reloads all configuration files.
+
+| | |
+|---|---|
+| **Permission** | `swm.reload` |
+| **Usage** | `/swm reload` |
+
+---
 
 ### /swm goto
-Permission required: `swm.goto`<br>
-Usage: `/swm goto <world> [player]`<br>
-Description: Teleports yourself to a world. If you want to teleport someone else, you can specify it by using the _player_ argument. 
 
-**This command also works for traditional worlds, not just SRF worlds.**
+Teleports you (or another player) to a world.
 
-## World Listing commands
+| | |
+|---|---|
+| **Permission** | `swm.goto` |
+| **Usage** | `/swm goto <world> [player]` |
+
+> Works with both SRF and vanilla worlds.
+
+---
+
+## World Listing
 
 ### /swm list
-Permission required: `swm.worldlist`<br>
-Usage: `/swm list [slime] [page]`<br>
-Description: Lists all worlds, including loaded non-SRF worlds. If you use the `slime` argument, only SRF worlds will be shown.
+
+Lists all worlds on the server.
+
+| | |
+|---|---|
+| **Permission** | `swm.worldlist` |
+| **Usage** | `/swm list [slime] [page]` |
+
+Use the `slime` argument to show only SRF worlds.
+
+---
 
 ### /swm dslist
-Permission required: `swm.dslist`<br>
-Usage: `/swm list <data-source> [page]`<br>
-Since version: 2.0.0.<br>
-Description: Lists all worlds contained inside a specified data source. Note that this command doesn't just list the worlds that are inside the config file, but every world inside the data source.
 
-## World Creation and Loading commands
+Lists all worlds stored in a data source.
 
-### /swm import
-Permission required: `swm.importworld`<br>
-Usage: `/swm import <path-to-world> <data-source> [new-world-name]`<br>
-Since version: 1.1.0.<br>
-Description: Converts a world into the SRF and stores it inside the provided data source. You can check out [this page](https://github.com/Grinderwolf/Slime-World-Manager/wiki/Converting-traditional-worlds-into-the-SRF) for more information on how to use this command.
+| | |
+|---|---|
+| **Permission** | `swm.dslist` |
+| **Usage** | `/swm dslist <data-source> [page]` |
 
-### /swm load
-Permission required: `swm.loadworld`<br>
-Usage: `/swm load <world>`<br>
-Description: Loads a world from the config file. Remember to configure the world after converting it to the SRF. More on that [here](https://github.com/Grinderwolf/Slime-World-Manager/wiki/Configuring-worlds).
+**Example:**
+```
+/swm dslist mysql
+/swm dslist file 2
+```
 
-### /swm load-template
-Permission required: `swm.loadworld.template`<br>
-Usage: `/swm load-template <template-world> <world>`<br>
-Since version: 2.0.0.<br>
-Description: Creates a clone of the provided template world. This can be used to create many copies of the same world. 
+---
 
-**Cloned template worlds are temporary, and they will never be actually stored anywhere, so any changes to them will be lost once the server is shut down.**
-
-### /swm clone
-Permission required: `swm.cloneworld`<br>
-Usage: `/swm clone <template-world> <world> [new-data-source]`<br>
-Since version: 2.2.0.<br>
-Description: Creates a clone of the provided template world. If not provided, SWM will use the data source of the template world to save the clone.
+## World Creation
 
 ### /swm create
-Permission required: `swm.createworld`<br>
-Usage: `/swm create <world> <data-source>`<br>
-Since version: 1.1.0.<br>
-Description: Creates an empty world and stores it in the provided data source. This command will also automatically save the world in the config file.
+
+Creates a new empty world.
+
+| | |
+|---|---|
+| **Permission** | `swm.createworld` |
+| **Usage** | `/swm create <world> <data-source>` |
+
+**Example:**
+```
+/swm create my_world file
+/swm create arena mysql
+```
+
+---
+
+### /swm import
+
+Imports a vanilla world and converts it to SRF.
+
+| | |
+|---|---|
+| **Permission** | `swm.importworld` |
+| **Usage** | `/swm import <path-to-world> <data-source> [new-world-name]` |
+
+**Example:**
+```
+/swm import world file
+/swm import old_world mysql new_world
+```
+
+---
+
+## World Loading
+
+### /swm load
+
+Loads a world from the configuration file.
+
+| | |
+|---|---|
+| **Permission** | `swm.loadworld` |
+| **Usage** | `/swm load <world>` |
+
+The world must be configured in `worlds.yml` first.
+
+---
+
+### /swm load-template
+
+Creates a temporary clone of a template world.
+
+| | |
+|---|---|
+| **Permission** | `swm.loadworld.template` |
+| **Usage** | `/swm load-template <template-world> <world-name>` |
+
+> Temporary clones are never saved and are lost on server restart.
+
+**Example:**
+```
+/swm load-template skyblock_template player_island
+```
+
+---
+
+### /swm clone
+
+Creates a persistent clone of a world.
+
+| | |
+|---|---|
+| **Permission** | `swm.cloneworld` |
+| **Usage** | `/swm clone <template-world> <new-world-name> [data-source]` |
+
+If no data source is specified, uses the template's data source.
+
+**Example:**
+```
+/swm clone skyblock_template island_001 mysql
+```
+
+---
 
 ### /swm unload
-Permission required: `swm.unloadworld`<br>
-Usage: `/swm unload <world>`<br>
-Description: Unloads a world from the server.
 
-**This command also works for traditional worlds, not just SRF worlds.**
+Unloads a world from the server.
 
-## World Management commands
+| | |
+|---|---|
+| **Permission** | `swm.unloadworld` |
+| **Usage** | `/swm unload <world>` |
 
-### /swm migrate
-Permission required: `swm.migrate`<br>
-Usage: `/swm migrate <world> <new-data-source>`<br>
-Description: Transfers a world from the current data source it's stored in to the specified.
+> Works with both SRF and vanilla worlds.
+
+---
+
+## World Management
 
 ### /swm save
-Permission required: `swm.saveworld`<br>
-Usage: `/swm save <world>`<br>
-Description: Saves a world.
+
+Manually saves a world.
+
+| | |
+|---|---|
+| **Permission** | `swm.saveworld` |
+| **Usage** | `/swm save <world>` |
+
+---
 
 ### /swm setspawn
-Permission required: `swm.setspawn`<br>
-Usage: `/swm setspawn <world> <x> <y> <z> <yaw> <pitch>`<br>
-Description: Set the spawnpoint of a world based on your location or one provided.
+
+Sets the spawn point for a world.
+
+| | |
+|---|---|
+| **Permission** | `swm.setspawn` |
+| **Usage** | `/swm setspawn <world> <x> <y> <z> [yaw] [pitch]` |
+
+**Example:**
+```
+/swm setspawn lobby 0 64 0
+/swm setspawn lobby 0 64 0 90 0
+```
+
+---
+
+### /swm migrate
+
+Moves a world to a different data source.
+
+| | |
+|---|---|
+| **Permission** | `swm.migrate` |
+| **Usage** | `/swm migrate <world> <new-data-source>` |
+
+**Example:**
+```
+/swm migrate my_world mysql
+```
+
+---
 
 ### /swm delete
-Permission required: `swm.deleteworld`<br>
-Usage: `/swm delete <world> [data-source]`<br>
-Description: Completely deletes a world. If a data source is not provided, the one specified in the config file will be used.
 
-**This action is permanent, and there's no way to go back once the world is deleted.** To make sure you are not doing this by mistake, you'll have to type the command twice.
+Permanently deletes a world.
+
+| | |
+|---|---|
+| **Permission** | `swm.deleteworld` |
+| **Usage** | `/swm delete <world> [data-source]` |
+
+> **Warning:** This action is permanent! Run the command twice to confirm.
+
+**Example:**
+```
+/swm delete old_world
+/swm delete old_world mysql
+```
+
+---
+
+## Permission Summary
+
+| Permission | Commands |
+|------------|----------|
+| `swm.*` | All commands |
+| `swm.debug` | `/swm debug` |
+| `swm.reload` | `/swm reload` |
+| `swm.goto` | `/swm goto` |
+| `swm.worldlist` | `/swm list` |
+| `swm.dslist` | `/swm dslist` |
+| `swm.createworld` | `/swm create` |
+| `swm.importworld` | `/swm import` |
+| `swm.loadworld` | `/swm load` |
+| `swm.loadworld.template` | `/swm load-template` |
+| `swm.cloneworld` | `/swm clone` |
+| `swm.unloadworld` | `/swm unload` |
+| `swm.saveworld` | `/swm save` |
+| `swm.setspawn` | `/swm setspawn` |
+| `swm.migrate` | `/swm migrate` |
+| `swm.deleteworld` | `/swm delete` |
+
+---
+
+## Example Permission Setup (LuckPerms)
+
+### Server Admin
+```
+/lp group admin permission set swm.* true
+```
+
+### Builder (can load/goto worlds)
+```
+/lp group builder permission set swm.loadworld true
+/lp group builder permission set swm.goto true
+/lp group builder permission set swm.worldlist true
+```
+
+### Default Player (view only)
+```
+/lp group default permission set swm.goto true
+```
