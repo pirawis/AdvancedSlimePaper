@@ -17,4 +17,10 @@ class NmsUtilTest {
 
         assertEquals(expected, NmsUtil.asLong(chunkX, chunkZ));
     }
+
+    @Test
+    @DisplayName("should handle zero coordinates")
+    void shouldHandleZeroCoordinates() {
+        assertEquals(0L, NmsUtil.asLong(0, 0));
+    }
 }

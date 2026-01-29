@@ -35,4 +35,11 @@ class InternalPluginTest {
         assertEquals("1.0", description.getVersion());
         assertEquals("nms", description.getMain());
     }
+
+    @Test
+    @DisplayName("should expose plugin meta")
+    void shouldExposePluginMeta() {
+        InternalPlugin plugin = new InternalPlugin();
+        assertSame(plugin.getDescription(), plugin.getPluginMeta());
+    }
 }

@@ -5,6 +5,12 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.IntBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
+import net.kyori.adventure.nbt.BinaryTagTypes;
+import net.kyori.adventure.nbt.ByteBinaryTag;
+import net.kyori.adventure.nbt.LongBinaryTag;
+import net.kyori.adventure.nbt.ShortBinaryTag;
+import net.kyori.adventure.nbt.FloatBinaryTag;
+import net.kyori.adventure.nbt.DoubleBinaryTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.chunk.DataLayer;
@@ -31,6 +37,12 @@ class ConverterTest {
     }
 
     @Test
+    @DisplayName("should return null for null DataLayer")
+    void shouldReturnNullForNullDataLayer() {
+        assertNull(Converter.convertArray((DataLayer) null));
+    }
+
+    @Test
     @DisplayName("should round-trip compound tags")
     void shouldRoundTripCompoundTags() {
         CompoundBinaryTag binary = CompoundBinaryTag.builder()
@@ -47,5 +59,34 @@ class ConverterTest {
 
         CompoundBinaryTag roundTrip = Converter.convertTag((CompoundTag) converted);
         assertEquals(binary, roundTrip);
+    }
+
+    @Test
+    @DisplayName("should preserve empty list tag")
+    void shouldPreserveEmptyListTag() {
+        ListBinaryTag empty = ListBinaryTag.listBinaryTag(BinaryTagTypes.END, List.of());
+        Tag converted = Converter.convertTag(empty);
+        ListBinaryTag roundTrip = Converter.convertTag(converted);
+        assertEquals(empty, roundTrip);
+    }
+
+    @Test
+    @DisplayName("should round-trip primitive tags")
+    void shouldRoundTripPrimitiveTags() {
+        List<Object> tags = List.of(
+            ByteBinaryTag.byteBinaryTag((byte) 7),
+            ShortBinaryTag.shortBinaryTag((short) 32000),
+            IntBinaryTag.intBinaryTag(123456),
+            LongBinaryTag.longBinaryTag(1234567890123L),
+            FloatBinaryTag.floatBinaryTag(1.5f),
+            DoubleBinaryTag.doubleBinaryTag(2.5d),
+            StringBinaryTag.stringBinaryTag("hello")
+        );
+
+        for (Object tag : tags) {
+            Tag converted = Converter.convertTag((net.kyori.adventure.nbt.BinaryTag) tag);
+            net.kyori.adventure.nbt.BinaryTag roundTrip = Converter.convertTag(converted);
+            assertEquals(tag, roundTrip);
+        }
     }
 }
