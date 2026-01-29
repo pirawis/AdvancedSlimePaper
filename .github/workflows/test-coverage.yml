@@ -29,6 +29,7 @@ jobs:
           ./gradlew :loaders:mysql-loader:test :loaders:mysql-loader:jacocoTestReport --continue
           ./gradlew :loaders:mongo-loader:test :loaders:mongo-loader:jacocoTestReport --continue
           ./gradlew :loaders:redis-loader:test :loaders:redis-loader:jacocoTestReport --continue
+          ./gradlew :plugin:test :plugin:jacocoTestReport --continue
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
