@@ -34,6 +34,10 @@ paperweight {
     }
 }
 
+repositories {
+    mavenCentral()
+}
+
 subprojects {
     apply(plugin = "java-library")
     apply(plugin = "maven-publish")
