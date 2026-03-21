@@ -34,4 +34,25 @@ jobs:
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
         with:
+          codecov_yml_path: codecov.yml
+          directory: .
+          disable_search: true
+          fail_ci_if_error: true
+          files: >-
+            api/build/reports/jacoco/test/jacocoTestReport.xml,
+            core/build/reports/jacoco/test/jacocoTestReport.xml,
+            importer/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/file-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/mysql-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/mongo-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            loaders/redis-loader/build/reports/jacoco/test/jacocoTestReport.xml,
+            plugin/build/reports/jacoco/test/jacocoTestReport.xml
+          flags: unittests
+          name: github-actions
+          override_branch: ${{ github.ref_name }}
+          override_build: ${{ github.run_id }}
+          override_build_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          override_commit: ${{ github.sha }}
+          slug: pirawis/AdvancedSlimePaper
           token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
