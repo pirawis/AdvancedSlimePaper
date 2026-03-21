@@ -1,5 +1,3 @@
-import net.kyori.indra.git.IndraGitExtension
-
 plugins {
     `java-library`
     id("net.kyori.indra.git")
@@ -50,13 +48,6 @@ tasks {
         options.encoding = Charsets.UTF_8.name()
         (options as StandardJavadocDocletOptions)
             .tags("apiNote:a:API Note", "implSpec:a:Implementation Requirements", "implNote:a:Implementation Note")
-    }
-
-    processResources {
-        filteringCharset = Charsets.UTF_8.name()
-        filesMatching(listOf("paper-plugin.yml", "version.txt")) {
-            expand("gitCommitId" to (project.the<IndraGitExtension>().commit()?.name ?: "unknown"))
-        }
     }
 
     test {

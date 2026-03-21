@@ -1,3 +1,5 @@
+import net.kyori.indra.git.IndraGitExtension
+
 plugins {
     id("asp.base-conventions")
     id("asp.publishing-conventions")
@@ -47,7 +49,7 @@ tasks {
 paper {
     name = "ASPaperPlugin"
     description = "ASP plugin for Paper, providing utilities for the ASP platform"
-    version = "\${gitCommitId}"
+    version = project.the<IndraGitExtension>().commit()?.name ?: "unknown"
     apiVersion = "1.21"
     main = "com.infernalsuite.asp.plugin.SWPlugin"
     authors = listOf("InfernalSuite")
