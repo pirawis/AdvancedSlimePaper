@@ -17,6 +17,7 @@ dependencies {
 
     compileOnly(paperApi())
     testImplementation(project(":api"))
+    testImplementation(paperApi())
     testRuntimeOnly(paperApi())
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
