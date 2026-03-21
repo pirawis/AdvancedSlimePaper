@@ -62,6 +62,10 @@ component_management:
       name: Plugin Module
       paths:
         - plugin/src/main/**
+    - component_id: importer
+      name: Importer Module
+      paths:
+        - importer/src/main/**
     - component_id: loaders
       name: Loaders
       paths:

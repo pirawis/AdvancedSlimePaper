@@ -1,8 +1,11 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     java
+    jacoco
     id("io.papermc.paperweight.patcher")
 }
 
@@ -100,5 +103,51 @@ subprojects {
             exceptionFormat = TestExceptionFormat.SHORT
             events()
         }
+    }
+}
+
+val coverageProjectPaths = listOf(
+    ":api",
+    ":core",
+    ":importer",
+    ":loaders:api-loader",
+    ":loaders:file-loader",
+    ":loaders:mysql-loader",
+    ":loaders:mongo-loader",
+    ":loaders:redis-loader",
+    ":plugin",
+)
+
+val testedCoverageProjectPaths = coverageProjectPaths.filterNot { it == ":loaders:api-loader" }
+val coverageProjects = coverageProjectPaths.map(::project)
+val testedCoverageProjects = testedCoverageProjectPaths.map(::project)
+
+tasks.register<JacocoReport>("aggregateCoverageReport") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Generates a single JaCoCo XML report for all Codecov-covered modules."
+
+    dependsOn(coverageProjects.map { "${it.path}:classes" })
+    dependsOn(testedCoverageProjects.map { "${it.path}:jacocoTestReport" })
+
+    sourceDirectories.from(
+        coverageProjects.map { it.extensions.getByType<SourceSetContainer>().named("main").get().allSource.srcDirs }
+    )
+    classDirectories.from(
+        coverageProjects.map { it.extensions.getByType<SourceSetContainer>().named("main").get().output }
+    )
+    executionData.from(
+        testedCoverageProjects.map { it.layout.buildDirectory.file("jacoco/test.exec") }
+    )
+
+    doFirst {
+        executionData.setFrom(executionData.files.filter { it.exists() })
+    }
+
+    reports {
+        xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/aggregateCoverageReport/aggregateCoverageReport.xml"))
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/aggregateCoverageReport/html"))
+        csv.required.set(false)
     }
 }

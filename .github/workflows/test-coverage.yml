@@ -22,14 +22,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          ./gradlew :api:test :api:jacocoTestReport --continue
-          ./gradlew :core:test :core:jacocoTestReport --continue
-          ./gradlew :importer:test :importer:jacocoTestReport --continue
-          ./gradlew :loaders:file-loader:test :loaders:file-loader:jacocoTestReport --continue
-          ./gradlew :loaders:mysql-loader:test :loaders:mysql-loader:jacocoTestReport --continue
-          ./gradlew :loaders:mongo-loader:test :loaders:mongo-loader:jacocoTestReport --continue
-          ./gradlew :loaders:redis-loader:test :loaders:redis-loader:jacocoTestReport --continue
-          ./gradlew :plugin:test :plugin:jacocoTestReport --continue
+          ./gradlew aggregateCoverageReport --continue
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
@@ -38,15 +31,7 @@ jobs:
           directory: .
           disable_search: true
           fail_ci_if_error: true
-          files: >-
-            api/build/reports/jacoco/test/jacocoTestReport.xml,
-            core/build/reports/jacoco/test/jacocoTestReport.xml,
-            importer/build/reports/jacoco/test/jacocoTestReport.xml,
-            loaders/file-loader/build/reports/jacoco/test/jacocoTestReport.xml,
-            loaders/mysql-loader/build/reports/jacoco/test/jacocoTestReport.xml,
-            loaders/mongo-loader/build/reports/jacoco/test/jacocoTestReport.xml,
-            loaders/redis-loader/build/reports/jacoco/test/jacocoTestReport.xml,
-            plugin/build/reports/jacoco/test/jacocoTestReport.xml
+          files: build/reports/jacoco/aggregateCoverageReport/aggregateCoverageReport.xml
           flags: unittests
           name: github-actions
           override_branch: ${{ github.ref_name }}
