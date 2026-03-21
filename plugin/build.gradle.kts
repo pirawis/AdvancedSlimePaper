@@ -3,7 +3,6 @@ import net.kyori.indra.git.IndraGitExtension
 plugins {
     id("asp.base-conventions")
     id("asp.publishing-conventions")
-    id("net.minecrell.plugin-yml.paper")
     id("com.gradleup.shadow")
 }
 
@@ -26,8 +25,42 @@ dependencies {
 }
 
 tasks {
+    val generatePaperPluginDescription by registering {
+        val outputFile = layout.buildDirectory.file("generated/plugin-metadata/paper-plugin.yml")
+        val gitCommitId = providers.provider { project.the<IndraGitExtension>().commit()?.name ?: "unknown" }
+
+        inputs.property("apiVersion", "1.21")
+        inputs.property("name", "ASPaperPlugin")
+        inputs.property("description", "ASP plugin for Paper, providing utilities for the ASP platform")
+        inputs.property("mainClass", "com.infernalsuite.asp.plugin.SWPlugin")
+        inputs.property("author", "InfernalSuite")
+        inputs.property("gitCommitId", gitCommitId)
+        outputs.file(outputFile)
+
+        doLast {
+            val file = outputFile.get().asFile
+            file.parentFile.mkdirs()
+            file.writeText(
+                """
+                api-version: "1.21"
+                name: ASPaperPlugin
+                version: ${gitCommitId.get()}
+                main: com.infernalsuite.asp.plugin.SWPlugin
+                description: "ASP plugin for Paper, providing utilities for the ASP platform"
+                authors:
+                  - InfernalSuite
+                """.trimIndent() + System.lineSeparator(),
+                Charsets.UTF_8
+            )
+        }
+    }
+
     withType<Jar> {
         archiveBaseName.set("asp-plugin")
+    }
+
+    processResources {
+        from(generatePaperPluginDescription)
     }
 
     shadowJar {
@@ -44,13 +77,4 @@ tasks {
     assemble {
         dependsOn(shadowJar)
     }
-}
-
-paper {
-    name = "ASPaperPlugin"
-    description = "ASP plugin for Paper, providing utilities for the ASP platform"
-    version = project.the<IndraGitExtension>().commit()?.name ?: "unknown"
-    apiVersion = "1.21"
-    main = "com.infernalsuite.asp.plugin.SWPlugin"
-    authors = listOf("InfernalSuite")
 }

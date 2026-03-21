@@ -92,7 +92,7 @@ subprojects {
         options.encoding = Charsets.UTF_8.name()
         (options as StandardJavadocDocletOptions).apply {
             addStringOption("Xdoclint:none", "-quiet")
-            addStringOption("-Xmaxwarns", "1")
+            addStringOption("Xmaxwarns", "1")
         }
         isFailOnError = false
         logging.captureStandardError(LogLevel.QUIET)
