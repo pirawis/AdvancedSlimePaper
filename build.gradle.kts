@@ -125,6 +125,11 @@ val coverageProjectPaths = listOf(
 val testedCoverageProjectPaths = coverageProjectPaths.filterNot { it == ":loaders:api-loader" }
 val coverageProjects = coverageProjectPaths.map(::project)
 val testedCoverageProjects = testedCoverageProjectPaths.map(::project)
+val aggregateExecutionData = providers.provider {
+    testedCoverageProjects
+        .map { it.layout.buildDirectory.file("jacoco/test.exec").get().asFile }
+        .filter { it.exists() }
+}
 
 tasks.register<JacocoReport>("aggregateCoverageReport") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -139,13 +144,7 @@ tasks.register<JacocoReport>("aggregateCoverageReport") {
     classDirectories.from(
         coverageProjects.map { it.extensions.getByType<SourceSetContainer>().named("main").get().output }
     )
-    executionData.from(
-        testedCoverageProjects.map { it.layout.buildDirectory.file("jacoco/test.exec") }
-    )
-
-    doFirst {
-        executionData.setFrom(executionData.files.filter { it.exists() })
-    }
+    executionData.setFrom(aggregateExecutionData)
 
     reports {
         xml.required.set(true)
