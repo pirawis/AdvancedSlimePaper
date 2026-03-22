@@ -2,13 +2,18 @@ package com.infernalsuite.asp.plugin.loader;
 
 import com.infernalsuite.asp.api.loaders.SlimeLoader;
 import com.infernalsuite.asp.api.loaders.UpdatableLoader;
+import com.infernalsuite.asp.loaders.api.APILoader;
 import com.infernalsuite.asp.loaders.file.FileLoader;
+import com.infernalsuite.asp.loaders.mongo.MongoLoader;
+import com.infernalsuite.asp.loaders.mysql.MysqlLoader;
+import com.infernalsuite.asp.loaders.redis.RedisLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -118,6 +123,85 @@ class LoaderManagerTest {
                 assertNull(loaderManager.getLoader("mongodb"));
                 assertNull(loaderManager.getLoader("redis"));
                 assertNull(loaderManager.getLoader("api"));
+            }
+        }
+
+        @Test
+        @DisplayName("should initialize all enabled optional loaders")
+        void shouldInitializeAllEnabledOptionalLoaders() {
+            try (MockedStatic<com.infernalsuite.asp.plugin.config.ConfigManager> configManager =
+                         mockStatic(com.infernalsuite.asp.plugin.config.ConfigManager.class);
+                 MockedConstruction<FileLoader> fileLoaderConstruction = mockConstruction(FileLoader.class);
+                 MockedConstruction<MysqlLoader> mysqlLoaderConstruction = mockConstruction(MysqlLoader.class);
+                 MockedConstruction<MongoLoader> mongoLoaderConstruction = mockConstruction(MongoLoader.class);
+                 MockedConstruction<RedisLoader> redisLoaderConstruction = mockConstruction(RedisLoader.class);
+                 MockedConstruction<APILoader> apiLoaderConstruction = mockConstruction(APILoader.class)) {
+
+                com.infernalsuite.asp.plugin.config.DatasourcesConfig mockConfig =
+                        mock(com.infernalsuite.asp.plugin.config.DatasourcesConfig.class);
+                com.infernalsuite.asp.plugin.config.DatasourcesConfig.FileConfig fileConfig =
+                        mock(com.infernalsuite.asp.plugin.config.DatasourcesConfig.FileConfig.class);
+                com.infernalsuite.asp.plugin.config.DatasourcesConfig.MysqlConfig mysqlConfig =
+                        mock(com.infernalsuite.asp.plugin.config.DatasourcesConfig.MysqlConfig.class);
+                com.infernalsuite.asp.plugin.config.DatasourcesConfig.MongoDBConfig mongoConfig =
+                        mock(com.infernalsuite.asp.plugin.config.DatasourcesConfig.MongoDBConfig.class);
+                com.infernalsuite.asp.plugin.config.DatasourcesConfig.RedisConfig redisConfig =
+                        mock(com.infernalsuite.asp.plugin.config.DatasourcesConfig.RedisConfig.class);
+                com.infernalsuite.asp.plugin.config.DatasourcesConfig.APIConfig apiConfig =
+                        mock(com.infernalsuite.asp.plugin.config.DatasourcesConfig.APIConfig.class);
+
+                when(fileConfig.getPath()).thenReturn(".");
+
+                when(mysqlConfig.isEnabled()).thenReturn(true);
+                when(mysqlConfig.getSqlUrl()).thenReturn("jdbc:mysql://localhost:3306/asp");
+                when(mysqlConfig.getHost()).thenReturn("localhost");
+                when(mysqlConfig.getPort()).thenReturn(3306);
+                when(mysqlConfig.getDatabase()).thenReturn("asp");
+                when(mysqlConfig.isUsessl()).thenReturn(false);
+                when(mysqlConfig.getUsername()).thenReturn("root");
+                when(mysqlConfig.getPassword()).thenReturn("secret");
+
+                when(mongoConfig.isEnabled()).thenReturn(true);
+                when(mongoConfig.getDatabase()).thenReturn("asp");
+                when(mongoConfig.getCollection()).thenReturn("worlds");
+                when(mongoConfig.getUsername()).thenReturn("mongo");
+                when(mongoConfig.getPassword()).thenReturn("secret");
+                when(mongoConfig.getAuthSource()).thenReturn("admin");
+                when(mongoConfig.getHost()).thenReturn("localhost");
+                when(mongoConfig.getPort()).thenReturn(27017);
+                when(mongoConfig.getUri()).thenReturn("mongodb://localhost:27017");
+
+                when(redisConfig.isEnabled()).thenReturn(true);
+                when(redisConfig.getUri()).thenReturn("redis://localhost:6379");
+
+                when(apiConfig.isEnabled()).thenReturn(true);
+                when(apiConfig.getUrl()).thenReturn("https://example.test/api");
+                when(apiConfig.getUsername()).thenReturn("api-user");
+                when(apiConfig.getToken()).thenReturn("token");
+                when(apiConfig.isIgnoreSslCertificate()).thenReturn(true);
+
+                when(mockConfig.getFileConfig()).thenReturn(fileConfig);
+                when(mockConfig.getMysqlConfig()).thenReturn(mysqlConfig);
+                when(mockConfig.getMongoDbConfig()).thenReturn(mongoConfig);
+                when(mockConfig.getRedisConfig()).thenReturn(redisConfig);
+                when(mockConfig.getApiConfig()).thenReturn(apiConfig);
+
+                configManager.when(com.infernalsuite.asp.plugin.config.ConfigManager::getDatasourcesConfig)
+                        .thenReturn(mockConfig);
+
+                loaderManager = new LoaderManager();
+
+                assertEquals(1, fileLoaderConstruction.constructed().size());
+                assertEquals(1, mysqlLoaderConstruction.constructed().size());
+                assertEquals(1, mongoLoaderConstruction.constructed().size());
+                assertEquals(1, redisLoaderConstruction.constructed().size());
+                assertEquals(1, apiLoaderConstruction.constructed().size());
+
+                assertSame(fileLoaderConstruction.constructed().getFirst(), loaderManager.getLoader("file"));
+                assertSame(mysqlLoaderConstruction.constructed().getFirst(), loaderManager.getLoader("mysql"));
+                assertSame(mongoLoaderConstruction.constructed().getFirst(), loaderManager.getLoader("mongodb"));
+                assertSame(redisLoaderConstruction.constructed().getFirst(), loaderManager.getLoader("redis"));
+                assertSame(apiLoaderConstruction.constructed().getFirst(), loaderManager.getLoader("api"));
             }
         }
     }
