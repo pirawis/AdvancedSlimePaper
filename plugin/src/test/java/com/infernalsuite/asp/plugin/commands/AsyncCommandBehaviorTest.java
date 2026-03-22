@@ -589,6 +589,58 @@ class AsyncCommandBehaviorTest extends AbstractCommandTest {
         }
 
         @Test
+        @DisplayName("should reject already loaded destination worlds")
+        void shouldRejectAlreadyLoadedDestinationWorlds() {
+            WorldData worldData = new WorldData();
+            worldData.setDataSource("file");
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit()) {
+                bukkit.when(() -> Bukkit.getWorld("arena-copy")).thenReturn(mock(World.class));
+                CloneWorldCmd command = new CloneWorldCmd(commandManager);
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.cloneWorld(
+                                source(sender),
+                                new NamedWorldData("template", worldData),
+                                "arena-copy",
+                                null
+                        )
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("already loaded"));
+            }
+        }
+
+        @Test
+        @DisplayName("should reject template and destination names that match")
+        void shouldRejectTemplateAndDestinationNamesThatMatch() {
+            WorldData worldData = new WorldData();
+            worldData.setDataSource("file");
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena-copy")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(mock(WorldsConfig.class));
+                CloneWorldCmd command = new CloneWorldCmd(commandManager);
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.cloneWorld(
+                                source(sender),
+                                new NamedWorldData("arena-copy", worldData),
+                                "arena-copy",
+                                null
+                        )
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("cannot be the same as the cloned world"));
+            }
+        }
+
+        @Test
         @DisplayName("should surface duplicate stored world errors")
         void shouldSurfaceDuplicateStoredWorldErrors() throws Exception {
             LoaderManager loaderManager = mockLoaderManager();
@@ -623,6 +675,105 @@ class AsyncCommandBehaviorTest extends AbstractCommandTest {
 
                 assertFalse(worldsInUse.contains("arena-copy"));
                 assertTrue(plainText(exception.getComponent()).contains("already a world called arena-copy stored"));
+            }
+        }
+
+        @Test
+        @DisplayName("should report corrupted template worlds")
+        void shouldReportCorruptedTemplateWorlds() throws Exception {
+            LoaderManager loaderManager = mockLoaderManager();
+            SlimeLoader sourceLoader = mock(SlimeLoader.class);
+            WorldData worldData = new WorldData();
+            worldData.setDataSource("file");
+            when(loaderManager.getLoader("file")).thenReturn(sourceLoader);
+            when(asp.readWorld(eq(sourceLoader), eq("template"), eq(false), any(SlimePropertyMap.class)))
+                    .thenThrow(new com.infernalsuite.asp.api.exceptions.CorruptedWorldException("template", new IOException("broken")));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena-copy")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(mock(WorldsConfig.class));
+                CloneWorldCmd command = new CloneWorldCmd(commandManager);
+
+                MessageCommandException exception = joinMessageException(
+                        command.cloneWorld(
+                                source(sender),
+                                new NamedWorldData("template", worldData),
+                                "arena-copy",
+                                null
+                        )
+                );
+
+                assertFalse(worldsInUse.contains("arena-copy"));
+                assertTrue(plainText(exception.getComponent()).contains("world seems to be corrupted"));
+            }
+        }
+
+        @Test
+        @DisplayName("should report newer slime format errors while cloning")
+        void shouldReportNewerSlimeFormatErrorsWhileCloning() throws Exception {
+            LoaderManager loaderManager = mockLoaderManager();
+            SlimeLoader sourceLoader = mock(SlimeLoader.class);
+            WorldData worldData = new WorldData();
+            worldData.setDataSource("file");
+            when(loaderManager.getLoader("file")).thenReturn(sourceLoader);
+            when(asp.readWorld(eq(sourceLoader), eq("template"), eq(false), any(SlimePropertyMap.class)))
+                    .thenThrow(new com.infernalsuite.asp.api.exceptions.NewerFormatException((byte) 99));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena-copy")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(mock(WorldsConfig.class));
+                CloneWorldCmd command = new CloneWorldCmd(commandManager);
+
+                MessageCommandException exception = joinMessageException(
+                        command.cloneWorld(
+                                source(sender),
+                                new NamedWorldData("template", worldData),
+                                "arena-copy",
+                                null
+                        )
+                );
+
+                assertFalse(worldsInUse.contains("arena-copy"));
+                assertTrue(plainText(exception.getComponent()).contains("newer version of the Slime Format"));
+            }
+        }
+
+        @Test
+        @DisplayName("should report generic loader io failures while cloning")
+        void shouldReportGenericLoaderIoFailuresWhileCloning() throws Exception {
+            LoaderManager loaderManager = mockLoaderManager();
+            SlimeLoader sourceLoader = mock(SlimeLoader.class);
+            WorldData worldData = new WorldData();
+            worldData.setDataSource("file");
+            when(loaderManager.getLoader("file")).thenReturn(sourceLoader);
+            when(asp.readWorld(eq(sourceLoader), eq("template"), eq(false), any(SlimePropertyMap.class)))
+                    .thenThrow(new IOException("disk error"));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena-copy")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(mock(WorldsConfig.class));
+                CloneWorldCmd command = new CloneWorldCmd(commandManager);
+
+                MessageCommandException exception = joinMessageException(
+                        command.cloneWorld(
+                                source(sender),
+                                new NamedWorldData("template", worldData),
+                                "arena-copy",
+                                null
+                        )
+                );
+
+                assertFalse(worldsInUse.contains("arena-copy"));
+                assertTrue(plainText(exception.getComponent()).contains("Take a look at the server console"));
             }
         }
 
@@ -732,6 +883,177 @@ class AsyncCommandBehaviorTest extends AbstractCommandTest {
                 assertFalse(worlds.get("arena-copy").isPvp());
                 assertFalse(worlds.get("arena-copy").isAllowMonsters());
                 assertMessageSent(sender, "imported successfully");
+            }
+        }
+
+        @Test
+        @DisplayName("should reject invalid world paths before touching the cache")
+        void shouldRejectInvalidWorldPathsBeforeTouchingTheCache(@TempDir final Path tempDir) {
+            Path filePath = assertDoesNotThrow(() -> Files.writeString(tempDir.resolve("not-a-dir.txt"), "data"));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance()) {
+                ImportWorldCmd command = new ImportWorldCmd(commandManager);
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.importWorld(
+                                source(sender),
+                                new String[]{filePath.toString(), "file"},
+                                filePath.toString(),
+                                new NamedSlimeLoader("file", mock(SlimeLoader.class)),
+                                null
+                        )
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("does not point out to a valid world directory"));
+            }
+        }
+
+        @Test
+        @DisplayName("should do nothing when the confirmation command arguments differ")
+        void shouldDoNothingWhenTheConfirmationCommandArgumentsDiffer(@TempDir final Path tempDir) {
+            when(sender.getName()).thenReturn("console");
+            SlimeLoader loader = mock(SlimeLoader.class);
+            Path worldPath = assertDoesNotThrow(() -> Files.createDirectory(tempDir.resolve("source-world")));
+            String[] firstArgs = {worldPath.toString(), "file", "arena-copy"};
+            String[] differentArgs = {worldPath.toString(), "file", "other-copy"};
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance()) {
+                ImportWorldCmd command = new ImportWorldCmd(commandManager);
+
+                command.importWorld(source(sender), firstArgs, worldPath.toString(), new NamedSlimeLoader("file", loader), "arena-copy").join();
+                clearInvocations(sender);
+
+                assertDoesNotThrow(() -> command.importWorld(
+                        source(sender),
+                        differentArgs,
+                        worldPath.toString(),
+                        new NamedSlimeLoader("file", loader),
+                        "other-copy"
+                ).join());
+
+                assertFalse(worldsInUse.contains("other-copy"));
+            }
+        }
+
+        @Test
+        @DisplayName("should reject confirmed imports when config already contains the target world")
+        void shouldRejectConfirmedImportsWhenConfigAlreadyContainsTheTargetWorld(@TempDir final Path tempDir) {
+            when(sender.getName()).thenReturn("console");
+            SlimeLoader loader = mock(SlimeLoader.class);
+            Path worldPath = assertDoesNotThrow(() -> Files.createDirectory(tempDir.resolve("source-world")));
+            String[] args = {worldPath.toString(), "file", "arena-copy"};
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            Map<String, WorldData> worlds = new HashMap<>();
+            worlds.put("arena-copy", new WorldData());
+            when(worldsConfig.getWorlds()).thenReturn(worlds);
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                ImportWorldCmd command = new ImportWorldCmd(commandManager);
+
+                command.importWorld(source(sender), args, worldPath.toString(), new NamedSlimeLoader("file", loader), "arena-copy").join();
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.importWorld(
+                                source(sender),
+                                args,
+                                worldPath.toString(),
+                                new NamedSlimeLoader("file", loader),
+                                "arena-copy"
+                        )
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("inside the worlds config file"));
+            }
+        }
+
+        @Test
+        @DisplayName("should use the source directory name and surface duplicate stored world errors")
+        void shouldUseTheSourceDirectoryNameAndSurfaceDuplicateStoredWorldErrors(@TempDir final Path tempDir) throws Exception {
+            when(sender.getName()).thenReturn("console");
+            SlimeLoader loader = mock(SlimeLoader.class);
+            Path worldPath = Files.createDirectory(tempDir.resolve("source-world"));
+            String[] args = {worldPath.toString(), "file"};
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+            when(asp.readVanillaWorld(worldPath.toFile(), "source-world", loader))
+                    .thenThrow(new com.infernalsuite.asp.api.exceptions.WorldAlreadyExistsException("source-world"));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                ImportWorldCmd command = new ImportWorldCmd(commandManager);
+
+                command.importWorld(source(sender), args, worldPath.toString(), new NamedSlimeLoader("file", loader), null).join();
+                clearInvocations(sender);
+
+                MessageCommandException exception = joinMessageException(
+                        command.importWorld(source(sender), args, worldPath.toString(), new NamedSlimeLoader("file", loader), null)
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("already contains a world called source-world"));
+            }
+        }
+
+        @Test
+        @DisplayName("should surface invalid vanilla world errors during import")
+        void shouldSurfaceInvalidVanillaWorldErrorsDuringImport(@TempDir final Path tempDir) throws Exception {
+            when(sender.getName()).thenReturn("console");
+            SlimeLoader loader = mock(SlimeLoader.class);
+            Path worldPath = Files.createDirectory(tempDir.resolve("broken-world"));
+            String[] args = {worldPath.toString(), "file"};
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+            when(asp.readVanillaWorld(worldPath.toFile(), "broken-world", loader))
+                    .thenThrow(new com.infernalsuite.asp.api.exceptions.InvalidWorldException(worldPath, "bad level.dat"));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                ImportWorldCmd command = new ImportWorldCmd(commandManager);
+
+                command.importWorld(source(sender), args, worldPath.toString(), new NamedSlimeLoader("file", loader), null).join();
+                clearInvocations(sender);
+
+                MessageCommandException exception = joinMessageException(
+                        command.importWorld(source(sender), args, worldPath.toString(), new NamedSlimeLoader("file", loader), null)
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("does not contain a valid Minecraft world"));
+            }
+        }
+
+        @Test
+        @DisplayName("should surface oversized world errors during import")
+        void shouldSurfaceOversizedWorldErrorsDuringImport(@TempDir final Path tempDir) throws Exception {
+            when(sender.getName()).thenReturn("console");
+            SlimeLoader loader = mock(SlimeLoader.class);
+            Path worldPath = Files.createDirectory(tempDir.resolve("huge-world"));
+            String[] args = {worldPath.toString(), "file"};
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+            when(asp.readVanillaWorld(worldPath.toFile(), "huge-world", loader))
+                    .thenThrow(new com.infernalsuite.asp.api.exceptions.WorldTooBigException("huge-world"));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                ImportWorldCmd command = new ImportWorldCmd(commandManager);
+
+                command.importWorld(source(sender), args, worldPath.toString(), new NamedSlimeLoader("file", loader), null).join();
+                clearInvocations(sender);
+
+                MessageCommandException exception = joinMessageException(
+                        command.importWorld(source(sender), args, worldPath.toString(), new NamedSlimeLoader("file", loader), null)
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("The Slime Format isn't meant for big worlds"));
             }
         }
     }
