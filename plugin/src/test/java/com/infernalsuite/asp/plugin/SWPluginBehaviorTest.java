@@ -1,6 +1,7 @@
 package com.infernalsuite.asp.plugin;
 
 import com.infernalsuite.asp.api.AdvancedSlimePaperAPI;
+import com.infernalsuite.asp.api.SlimeNMSBridge;
 import com.infernalsuite.asp.api.exceptions.CorruptedWorldException;
 import com.infernalsuite.asp.api.exceptions.NewerFormatException;
 import com.infernalsuite.asp.api.exceptions.UnknownWorldException;
@@ -15,6 +16,7 @@ import com.infernalsuite.asp.plugin.loader.LoaderManager;
 import com.infernalsuite.asp.plugin.testutil.TestAdvancedSlimePaperAPI;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
+import org.bukkit.Server;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +30,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -217,6 +221,199 @@ class SWPluginBehaviorTest {
     }
 
     @Test
+    @DisplayName("should stop loading when config initialization fails")
+    void shouldStopLoadingWhenConfigInitializationFails() {
+        IOException failure = new IOException("boom");
+
+        try (MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class);
+             MockedConstruction<LoaderManager> ignoredLoaders = mockConstruction(LoaderManager.class)) {
+            configManager.when(ConfigManager::initialize).thenThrow(failure);
+
+            SWPlugin plugin = plugin();
+            plugin.onLoad();
+
+            verify(slf4jLogger).error("Failed to load config files", failure);
+            Assertions.assertNull(plugin.getLoaderManager());
+            Assertions.assertTrue(ignoredLoaders.constructed().isEmpty());
+        }
+    }
+
+    @Test
+    @DisplayName("should load default world overrides during onLoad")
+    void shouldLoadDefaultWorldOverridesDuringOnLoad() throws Exception {
+        writeServerProperties("world");
+
+        WorldData overworld = loadOnStartupWorld();
+        WorldData nether = loadOnStartupWorld();
+        WorldData end = loadOnStartupWorld();
+
+        Map<String, WorldData> configuredWorlds = new LinkedHashMap<>();
+        configuredWorlds.put("world", overworld);
+        configuredWorlds.put("world_nether", nether);
+        configuredWorlds.put("world_the_end", end);
+
+        SlimeWorld netherWorld = mock(SlimeWorld.class);
+        SlimeWorld endWorld = mock(SlimeWorld.class);
+        SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+        Server server = mock(Server.class);
+
+        when(worldsConfig.getWorlds()).thenReturn(configuredWorlds);
+        when(asp.readWorld(eq(fileLoader), eq("world"), eq(false), any())).thenReturn(startupWorld);
+        when(asp.readWorld(eq(fileLoader), eq("world_nether"), eq(false), any())).thenReturn(netherWorld);
+        when(asp.readWorld(eq(fileLoader), eq("world_the_end"), eq(false), any())).thenReturn(endWorld);
+        when(server.getAllowNether()).thenReturn(true);
+        when(server.getAllowEnd()).thenReturn(true);
+
+        TestAdvancedSlimePaperAPI.setDelegate(asp);
+
+        try (MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class);
+             MockedStatic<SlimeNMSBridge> bridgeStatic = mockStatic(SlimeNMSBridge.class);
+             MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+             MockedConstruction<LoaderManager> loaders = mockConstruction(LoaderManager.class, (mock, context) ->
+                     when(mock.getLoader("file")).thenReturn(fileLoader))) {
+            configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+            bridgeStatic.when(SlimeNMSBridge::instance).thenReturn(bridge);
+            bukkit.when(Bukkit::getServer).thenReturn(server);
+
+            SWPlugin plugin = plugin();
+            when(plugin.getServer()).thenReturn(server);
+
+            plugin.onLoad();
+
+            verify(worldsConfig).save();
+            verify(bridge).setDefaultWorlds(startupWorld, netherWorld, endWorld);
+            Assertions.assertSame(loaders.constructed().getFirst(), plugin.getLoaderManager());
+            Assertions.assertEquals(3, worldsToLoad(plugin).size());
+        }
+    }
+
+    @Test
+    @DisplayName("should shut down when the default world fails to load on startup")
+    void shouldShutDownWhenTheDefaultWorldFailsToLoadOnStartup() throws Exception {
+        writeServerProperties("world");
+
+        WorldData overworld = loadOnStartupWorld();
+        Map<String, WorldData> configuredWorlds = new LinkedHashMap<>();
+        configuredWorlds.put("world", overworld);
+
+        SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+        Server server = mock(Server.class);
+
+        when(worldsConfig.getWorlds()).thenReturn(configuredWorlds);
+        when(asp.readWorld(eq(fileLoader), eq("world"), eq(false), any())).thenThrow(new UnknownWorldException("world"));
+        when(server.getAllowNether()).thenReturn(false);
+        when(server.getAllowEnd()).thenReturn(false);
+
+        TestAdvancedSlimePaperAPI.setDelegate(asp);
+
+        try (MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class);
+             MockedStatic<SlimeNMSBridge> bridgeStatic = mockStatic(SlimeNMSBridge.class);
+             MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+             MockedConstruction<LoaderManager> loaders = mockConstruction(LoaderManager.class, (mock, context) ->
+                     when(mock.getLoader("file")).thenReturn(fileLoader))) {
+            configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+            bridgeStatic.when(SlimeNMSBridge::instance).thenReturn(bridge);
+            bukkit.when(Bukkit::getServer).thenReturn(server);
+
+            SWPlugin plugin = plugin();
+            when(plugin.getServer()).thenReturn(server);
+
+            plugin.onLoad();
+
+            verify(server).shutdown();
+            verify(slf4jLogger).error("Shutting down server, as the default world could not be loaded.");
+            verify(bridge).setDefaultWorlds(null, null, null);
+            Assertions.assertSame(loaders.constructed().getFirst(), plugin.getLoaderManager());
+        }
+    }
+
+    @Test
+    @DisplayName("should shut down when the default nether fails to load on startup")
+    void shouldShutDownWhenTheDefaultNetherFailsToLoadOnStartup() throws Exception {
+        writeServerProperties("world");
+
+        WorldData overworld = loadOnStartupWorld();
+        WorldData nether = loadOnStartupWorld();
+        Map<String, WorldData> configuredWorlds = new LinkedHashMap<>();
+        configuredWorlds.put("world", overworld);
+        configuredWorlds.put("world_nether", nether);
+
+        SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+        Server server = mock(Server.class);
+
+        when(worldsConfig.getWorlds()).thenReturn(configuredWorlds);
+        when(asp.readWorld(eq(fileLoader), eq("world"), eq(false), any())).thenReturn(startupWorld);
+        when(asp.readWorld(eq(fileLoader), eq("world_nether"), eq(false), any())).thenThrow(new UnknownWorldException("world_nether"));
+        when(server.getAllowNether()).thenReturn(true);
+        when(server.getAllowEnd()).thenReturn(false);
+
+        TestAdvancedSlimePaperAPI.setDelegate(asp);
+
+        try (MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class);
+             MockedStatic<SlimeNMSBridge> bridgeStatic = mockStatic(SlimeNMSBridge.class);
+             MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+             MockedConstruction<LoaderManager> loaders = mockConstruction(LoaderManager.class, (mock, context) ->
+                     when(mock.getLoader("file")).thenReturn(fileLoader))) {
+            configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+            bridgeStatic.when(SlimeNMSBridge::instance).thenReturn(bridge);
+            bukkit.when(Bukkit::getServer).thenReturn(server);
+
+            SWPlugin plugin = plugin();
+            when(plugin.getServer()).thenReturn(server);
+
+            plugin.onLoad();
+
+            verify(server).shutdown();
+            verify(slf4jLogger).error("Shutting down server, as the default nether world could not be loaded.");
+            verify(bridge).setDefaultWorlds(startupWorld, null, null);
+            Assertions.assertSame(loaders.constructed().getFirst(), plugin.getLoaderManager());
+        }
+    }
+
+    @Test
+    @DisplayName("should shut down when the default end fails to load on startup")
+    void shouldShutDownWhenTheDefaultEndFailsToLoadOnStartup() throws Exception {
+        writeServerProperties("world");
+
+        WorldData overworld = loadOnStartupWorld();
+        WorldData end = loadOnStartupWorld();
+        Map<String, WorldData> configuredWorlds = new LinkedHashMap<>();
+        configuredWorlds.put("world", overworld);
+        configuredWorlds.put("world_the_end", end);
+
+        SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+        Server server = mock(Server.class);
+
+        when(worldsConfig.getWorlds()).thenReturn(configuredWorlds);
+        when(asp.readWorld(eq(fileLoader), eq("world"), eq(false), any())).thenReturn(startupWorld);
+        when(asp.readWorld(eq(fileLoader), eq("world_the_end"), eq(false), any())).thenThrow(new UnknownWorldException("world_the_end"));
+        when(server.getAllowNether()).thenReturn(false);
+        when(server.getAllowEnd()).thenReturn(true);
+
+        TestAdvancedSlimePaperAPI.setDelegate(asp);
+
+        try (MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class);
+             MockedStatic<SlimeNMSBridge> bridgeStatic = mockStatic(SlimeNMSBridge.class);
+             MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+             MockedConstruction<LoaderManager> loaders = mockConstruction(LoaderManager.class, (mock, context) ->
+                     when(mock.getLoader("file")).thenReturn(fileLoader))) {
+            configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+            bridgeStatic.when(SlimeNMSBridge::instance).thenReturn(bridge);
+            bukkit.when(Bukkit::getServer).thenReturn(server);
+
+            SWPlugin plugin = plugin();
+            when(plugin.getServer()).thenReturn(server);
+
+            plugin.onLoad();
+
+            verify(server).shutdown();
+            verify(slf4jLogger).error("Shutting down server, as the default end world could not be loaded.");
+            verify(bridge).setDefaultWorlds(startupWorld, null, null);
+            Assertions.assertSame(loaders.constructed().getFirst(), plugin.getLoaderManager());
+        }
+    }
+
+    @Test
     @DisplayName("should load only missing worlds on enable and clear the startup cache")
     void shouldLoadOnlyMissingWorldsOnEnableAndClearTheStartupCache() throws Exception {
         SlimeWorld failingWorld = mock(SlimeWorld.class);
@@ -257,6 +454,21 @@ class SWPluginBehaviorTest {
             throw new RuntimeException(exception);
         }
         return plugin;
+    }
+
+    private static WorldData loadOnStartupWorld() {
+        WorldData worldData = new WorldData();
+        worldData.setDataSource("file");
+        worldData.setLoadOnStartup(true);
+        return worldData;
+    }
+
+    private static Path serverPropertiesPath() {
+        return Path.of("server.properties");
+    }
+
+    private static void writeServerProperties(final String levelName) throws IOException {
+        Files.writeString(serverPropertiesPath(), "level-name=" + levelName + System.lineSeparator());
     }
 
     @SuppressWarnings("unchecked")
