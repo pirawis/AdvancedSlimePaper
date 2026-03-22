@@ -2,7 +2,6 @@ package com.infernalsuite.asp.plugin.commands;
 
 import com.infernalsuite.asp.api.SlimeNMSBridge;
 import com.infernalsuite.asp.api.loaders.SlimeLoader;
-import com.infernalsuite.asp.api.world.SlimeWorld;
 import com.infernalsuite.asp.api.world.SlimeWorldInstance;
 import com.infernalsuite.asp.plugin.commands.exception.MessageCommandException;
 import com.infernalsuite.asp.plugin.commands.parser.NamedSlimeLoader;
@@ -27,10 +26,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -182,5 +184,76 @@ class ListingCommandBehaviorTest extends AbstractCommandTest {
             }
         }
 
+        @Test
+        @DisplayName("should reject pages beyond the available world list")
+        void shouldRejectPagesBeyondTheAvailableWorldList() throws Exception {
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline()) {
+                DSListCmd command = new DSListCmd(commandManager);
+                SlimeLoader loader = mock(SlimeLoader.class);
+                when(loader.listWorlds()).thenReturn(List.of("one", "two", "three"));
+
+                CompletionException exception = assertThrows(
+                        CompletionException.class,
+                        () -> command.listWorlds(source(sender), new NamedSlimeLoader("file", loader), 2).join()
+                );
+
+                MessageCommandException messageException = assertMessageException(exception);
+                assertTrue(plainText(messageException.getComponent()).contains("There is only 1 page"));
+            }
+        }
+
+        @Test
+        @DisplayName("should render a paginated sorted world list and mark loaded worlds")
+        void shouldRenderAPaginatedSortedWorldListAndMarkLoadedWorlds() throws Exception {
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+                 MockedStatic<SlimeNMSBridge> bridgeStatic = mockStatic(SlimeNMSBridge.class)) {
+                DSListCmd command = new DSListCmd(commandManager);
+                SlimeLoader loader = mock(SlimeLoader.class);
+                World loadedWorld = mock(World.class);
+                SlimeWorldInstance slimeWorld = mock(SlimeWorldInstance.class);
+                SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+                when(loader.listWorlds()).thenReturn(new ArrayList<>(List.of("zeta", "alpha", "epsilon", "beta", "delta", "gamma")));
+                when(slimeWorld.getLoader()).thenReturn(loader);
+
+                bukkit.when(() -> Bukkit.getWorld("alpha")).thenReturn(null);
+                bukkit.when(() -> Bukkit.getWorld("beta")).thenReturn(null);
+                bukkit.when(() -> Bukkit.getWorld("delta")).thenReturn(null);
+                bukkit.when(() -> Bukkit.getWorld("epsilon")).thenReturn(null);
+                bukkit.when(() -> Bukkit.getWorld("gamma")).thenReturn(loadedWorld);
+                bridgeStatic.when(SlimeNMSBridge::instance).thenReturn(bridge);
+                when(bridge.getInstance(loadedWorld)).thenReturn(slimeWorld);
+
+                command.listWorlds(source(sender), new NamedSlimeLoader("file", loader), 1).join();
+
+                ArgumentCaptor<Component> componentCaptor = ArgumentCaptor.forClass(Component.class);
+                verify(sender, org.mockito.Mockito.times(6)).sendMessage(componentCaptor.capture());
+                List<String> messages = componentCaptor.getAllValues().stream().map(ListingCommandBehaviorTest::plainText).toList();
+
+                assertTrue(messages.get(0).contains("World list [1/2]:"));
+                assertTrue(messages.stream().anyMatch(message -> message.contains("alpha")));
+                assertTrue(messages.stream().anyMatch(message -> message.contains("beta")));
+                assertTrue(messages.stream().anyMatch(message -> message.contains("delta")));
+                assertTrue(messages.stream().anyMatch(message -> message.contains("epsilon")));
+                assertTrue(messages.stream().anyMatch(message -> message.contains("gamma")));
+            }
+        }
+
+    }
+
+    private static MockedStatic<CompletableFuture> mockRunAsyncInline() {
+        MockedStatic<CompletableFuture> completableFuture = mockStatic(CompletableFuture.class, CALLS_REAL_METHODS);
+        completableFuture.when(() -> CompletableFuture.runAsync(any(Runnable.class))).thenAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            try {
+                runnable.run();
+                return CompletableFuture.completedFuture(null);
+            } catch (Throwable throwable) {
+                return CompletableFuture.failedFuture(throwable);
+            }
+        });
+        return completableFuture;
     }
 }
