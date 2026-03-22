@@ -4,10 +4,23 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.InvocationTargetException;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Util")
 class UtilTest {
+
+    @Test
+    @DisplayName("should reject utility instantiation")
+    void shouldRejectUtilityInstantiation() throws Exception {
+        var constructor = Util.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+
+        InvocationTargetException exception = assertThrows(InvocationTargetException.class, constructor::newInstance);
+
+        assertInstanceOf(AssertionError.class, exception.getCause());
+    }
 
     @Nested
     @DisplayName("chunkPosition")

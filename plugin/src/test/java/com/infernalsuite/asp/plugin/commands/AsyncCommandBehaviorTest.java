@@ -1622,6 +1622,56 @@ class AsyncCommandBehaviorTest extends AbstractCommandTest {
                 assertMessageSent(sender, "Failed to unload world arena");
             }
         }
+
+        @Test
+        @DisplayName("should unload successfully after teleporting players away")
+        void shouldUnloadSuccessfullyAfterTeleportingPlayersAway() {
+            SlimeWorld slimeWorld = mock(SlimeWorld.class);
+            World bukkitWorld = mock(World.class);
+            World defaultWorld = mock(World.class);
+            Player player = mock(Player.class);
+            Block solidBlock = mock(Block.class);
+            BukkitScheduler scheduler = mock(BukkitScheduler.class);
+            SWPlugin pluginInstance = mock(SWPlugin.class);
+
+            when(slimeWorld.getName()).thenReturn("arena");
+            when(bukkitWorld.getPlayers()).thenReturn(List.of(player));
+            when(player.teleportAsync(any(Location.class))).thenReturn(CompletableFuture.completedFuture(true));
+
+            Location spawn = new Location(defaultWorld, 0, 30, 0);
+            when(defaultWorld.getSpawnLocation()).thenReturn(spawn);
+            when(solidBlock.getType()).thenReturn(Material.STONE);
+
+            doAnswer(invocation -> {
+                Location location = invocation.getArgument(0);
+                return location.getY() >= 320 ? solidBlock : solidBlock;
+            }).when(defaultWorld).getBlockAt(any(Location.class));
+
+            doAnswer(invocation -> {
+                Runnable runnable = invocation.getArgument(1);
+                runnable.run();
+                return null;
+            }).when(scheduler).runTask(any(), any(Runnable.class));
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+                 MockedStatic<SWPlugin> pluginStatic = mockStatic(SWPlugin.class)) {
+                pluginStatic.when(SWPlugin::getInstance).thenReturn(pluginInstance);
+                bukkit.when(() -> Bukkit.getWorld("arena")).thenReturn(bukkitWorld);
+                bukkit.when(Bukkit::getWorlds).thenReturn(List.of(defaultWorld));
+                bukkit.when(Bukkit::getScheduler).thenReturn(scheduler);
+                bukkit.when(() -> Bukkit.unloadWorld(bukkitWorld, true)).thenReturn(true);
+                UnloadWorldCmd command = new UnloadWorldCmd(commandManager);
+
+                command.unloadWorld(source(sender), slimeWorld);
+
+                ArgumentCaptor<Location> locationCaptor = ArgumentCaptor.forClass(Location.class);
+                verify(player).teleportAsync(locationCaptor.capture());
+                assertEquals(321.0, locationCaptor.getValue().getY());
+                bukkit.verify(() -> Bukkit.unloadWorld(bukkitWorld, true));
+                assertMessageSent(sender, "unloaded correctly");
+            }
+        }
     }
 
     private LoaderManager mockLoaderManager() {

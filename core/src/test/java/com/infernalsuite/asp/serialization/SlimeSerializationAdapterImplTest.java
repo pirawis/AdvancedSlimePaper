@@ -7,6 +7,7 @@ import com.infernalsuite.asp.api.utils.SlimeFormat;
 import com.infernalsuite.asp.api.world.SlimeWorld;
 import com.infernalsuite.asp.api.world.SlimeWorldInstance;
 import com.infernalsuite.asp.api.world.properties.SlimePropertyMap;
+import com.infernalsuite.asp.serialization.slime.SlimeSerializer;
 import com.infernalsuite.asp.serialization.slime.reader.SlimeWorldReaderRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +60,18 @@ class SlimeSerializationAdapterImplTest {
 
             assertTrue(exception.getMessage().contains("SlimeWorldInstances cannot be serialized directly"));
             assertTrue(exception.getMessage().contains("getSerializableCopy()"));
+        }
+
+        @Test
+        @DisplayName("should delegate serialization for serializable slime worlds")
+        void shouldDelegateSerializationForSerializableSlimeWorlds() {
+            byte[] serialized = new byte[]{4, 2, 0};
+
+            try (MockedStatic<SlimeSerializer> serializer = mockStatic(SlimeSerializer.class)) {
+                serializer.when(() -> SlimeSerializer.serialize(mockSlimeWorld)).thenReturn(serialized);
+
+                assertSame(serialized, adapter.serializeWorld(mockSlimeWorld));
+            }
         }
     }
 

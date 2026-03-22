@@ -13,6 +13,12 @@ class SlimeLoggerTest {
 
     private boolean originalDebugState;
 
+    @Test
+    @DisplayName("should allow instantiation")
+    void shouldAllowInstantiation() {
+        assertDoesNotThrow(SlimeLogger::new);
+    }
+
     @BeforeEach
     void setUp() {
         originalDebugState = SlimeLogger.DEBUG;
