@@ -38,12 +38,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -109,6 +112,32 @@ class ParserBehaviorTest {
                         result.failure().orElseThrow()
                 );
                 assertTrue(plainText(exception.getComponent()).contains("World missing is not loaded!"));
+            }
+        }
+
+        @Test
+        @DisplayName("should suggest currently loaded bukkit worlds")
+        void shouldSuggestCurrentlyLoadedBukkitWorlds() {
+            BukkitWorldParser parser = new BukkitWorldParser();
+            World alpha = mock(World.class);
+            World beta = mock(World.class);
+            when(alpha.getName()).thenReturn("alpha");
+            when(beta.getName()).thenReturn("beta");
+
+            try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+                 MockedStatic<CompletableFuture> completableFuture = mockStatic(CompletableFuture.class, CALLS_REAL_METHODS)) {
+                bukkit.when(Bukkit::getWorlds).thenReturn(List.of(alpha, beta));
+                completableFuture.when(() -> CompletableFuture.supplyAsync(any(Supplier.class))).thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    Supplier<Object> supplier = invocation.getArgument(0);
+                    return CompletableFuture.completedFuture(supplier.get());
+                });
+
+                List<String> suggestionValues = suggestions(
+                        parser.suggestionProvider().suggestionsFuture(commandContext, CommandInput.empty())
+                );
+
+                assertEquals(List.of("alpha", "beta"), suggestionValues);
             }
         }
 
