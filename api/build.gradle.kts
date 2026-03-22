@@ -8,6 +8,7 @@ dependencies {
     api(libs.adventure.nbt)
 
     compileOnly(paperApi())
+    testCompileOnly(paperApi())
     testRuntimeOnly(paperApi())
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)

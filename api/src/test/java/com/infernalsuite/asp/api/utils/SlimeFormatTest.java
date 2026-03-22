@@ -9,6 +9,12 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("SlimeFormat")
 class SlimeFormatTest {
 
+    @Test
+    @DisplayName("should allow creating a format holder instance")
+    void shouldAllowCreatingAFormatHolderInstance() {
+        assertDoesNotThrow(SlimeFormat::new);
+    }
+
     @Nested
     @DisplayName("SLIME_HEADER")
     class SlimeHeaderTests {

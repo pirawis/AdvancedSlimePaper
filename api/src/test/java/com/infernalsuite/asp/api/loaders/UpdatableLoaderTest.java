@@ -4,10 +4,23 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("UpdatableLoader")
 class UpdatableLoaderTest {
+
+    @Test
+    @DisplayName("should allow concrete subclasses to implement update")
+    void shouldAllowConcreteSubclassesToImplementUpdate() throws Exception {
+        TestUpdatableLoader loader = new TestUpdatableLoader();
+
+        loader.update();
+
+        assertTrue(loader.updated);
+    }
 
     @Nested
     @DisplayName("NewerStorageException")
@@ -80,6 +93,39 @@ class UpdatableLoaderTest {
                 new UpdatableLoader.NewerStorageException(implementationVersion, storageVersion);
 
             assertTrue(ex.getStorageVersion() > ex.getImplementationVersion());
+        }
+    }
+
+    private static final class TestUpdatableLoader extends UpdatableLoader {
+
+        private boolean updated;
+
+        @Override
+        public void update() {
+            this.updated = true;
+        }
+
+        @Override
+        public byte[] readWorld(final String worldName) {
+            return new byte[0];
+        }
+
+        @Override
+        public boolean worldExists(final String worldName) {
+            return false;
+        }
+
+        @Override
+        public List<String> listWorlds() {
+            return List.of();
+        }
+
+        @Override
+        public void saveWorld(final String worldName, final byte[] serializedWorld) throws IOException {
+        }
+
+        @Override
+        public void deleteWorld(final String worldName) throws IOException {
         }
     }
 }
