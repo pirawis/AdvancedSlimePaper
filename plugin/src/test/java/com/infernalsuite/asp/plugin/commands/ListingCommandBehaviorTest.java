@@ -127,6 +127,81 @@ class ListingCommandBehaviorTest extends AbstractCommandTest {
                 assertTrue(lines.stream().anyMatch(line -> line.contains("loaded-vanilla")));
             }
         }
+
+        @Test
+        @DisplayName("should list only slime worlds when requested")
+        void shouldListOnlySlimeWorldsWhenRequested() {
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class);
+                 MockedStatic<SlimeNMSBridge> bridgeStatic = mockStatic(SlimeNMSBridge.class)) {
+                WorldListCmd command = new WorldListCmd(commandManager);
+                World slimeWorld = mock(World.class);
+                when(slimeWorld.getName()).thenReturn("loaded-srf");
+                World vanillaWorld = mock(World.class);
+                when(vanillaWorld.getName()).thenReturn("loaded-vanilla");
+                SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+                WorldsConfig worldsConfig = mock(WorldsConfig.class);
+                when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+                bukkit.when(Bukkit::getWorlds).thenReturn(List.of(slimeWorld, vanillaWorld));
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                bridgeStatic.when(SlimeNMSBridge::instance).thenReturn(bridge);
+                when(bridge.getInstance(slimeWorld)).thenReturn(mock(SlimeWorldInstance.class));
+                when(bridge.getInstance(vanillaWorld)).thenReturn(null);
+
+                command.listWorlds(source(sender), new String[]{"swm", "list", "slime"}, "slime", null);
+
+                ArgumentCaptor<String> lineCaptor = ArgumentCaptor.forClass(String.class);
+                verify(sender).sendMessage(any(Component.class));
+                verify(sender, org.mockito.Mockito.times(1)).sendMessage(lineCaptor.capture());
+                assertTrue(lineCaptor.getValue().contains("loaded-srf"));
+                assertTrue(!lineCaptor.getValue().contains("loaded-vanilla"));
+            }
+        }
+
+        @Test
+        @DisplayName("should reject pages below one")
+        void shouldRejectPagesBelowOne() {
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
+                WorldListCmd command = new WorldListCmd(commandManager);
+                bukkit.when(Bukkit::getWorlds).thenReturn(List.of());
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.listWorlds(source(sender), new String[]{"swm", "list", "0"}, null, "0")
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("'0' is not a valid number."));
+            }
+        }
+
+        @Test
+        @DisplayName("should reject pages beyond the available list")
+        void shouldRejectPagesBeyondTheAvailableList() {
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class);
+                 MockedStatic<SlimeNMSBridge> bridgeStatic = mockStatic(SlimeNMSBridge.class)) {
+                WorldListCmd command = new WorldListCmd(commandManager);
+                World loadedWorld = mock(World.class);
+                when(loadedWorld.getName()).thenReturn("loaded-srf");
+                SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+                WorldsConfig worldsConfig = mock(WorldsConfig.class);
+                when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+                bukkit.when(Bukkit::getWorlds).thenReturn(List.of(loadedWorld));
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                bridgeStatic.when(SlimeNMSBridge::instance).thenReturn(bridge);
+                when(bridge.getInstance(loadedWorld)).thenReturn(mock(SlimeWorldInstance.class));
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.listWorlds(source(sender), new String[]{"swm", "list", "2"}, null, "2")
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("There is only 1 page"));
+            }
+        }
     }
 
     @Nested

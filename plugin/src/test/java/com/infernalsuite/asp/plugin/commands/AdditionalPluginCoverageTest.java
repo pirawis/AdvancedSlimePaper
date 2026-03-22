@@ -280,6 +280,62 @@ class AdditionalPluginCoverageTest extends AbstractCommandTest {
                 assertTrue(plainText(exception.getComponent()).contains("already contains a world named arena"));
             }
         }
+
+        @Test
+        @DisplayName("should reject migrations while the world is already being processed")
+        void shouldRejectMigrationsWhileTheWorldIsAlreadyBeingProcessed() {
+            LoaderManager loaderManager = mockLoaderManager();
+            SlimeLoader currentLoader = mock(SlimeLoader.class);
+            WorldData worldData = new WorldData();
+            worldData.setDataSource("file");
+            when(loaderManager.getLoader("file")).thenReturn(currentLoader);
+            worldsInUse.add("arena");
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance()) {
+                MigrateWorldCmd command = new MigrateWorldCmd(commandManager);
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.onCommand(
+                                source(sender),
+                                new NamedWorldData("arena", worldData),
+                                new NamedSlimeLoader("mysql", mock(SlimeLoader.class))
+                        )
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("already being used on another command"));
+            } finally {
+                worldsInUse.remove("arena");
+            }
+        }
+
+        @Test
+        @DisplayName("should wrap io failures during migration")
+        void shouldWrapIoFailuresDuringMigration() throws Exception {
+            LoaderManager loaderManager = mockLoaderManager();
+            SlimeLoader currentLoader = mock(SlimeLoader.class);
+            SlimeLoader targetLoader = mock(SlimeLoader.class);
+            WorldData worldData = new WorldData();
+            worldData.setDataSource("file");
+            when(loaderManager.getLoader("file")).thenReturn(currentLoader);
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline()) {
+                doThrow(new IOException("disk error")).when(asp).migrateWorld("arena", currentLoader, targetLoader);
+                MigrateWorldCmd command = new MigrateWorldCmd(commandManager);
+
+                MessageCommandException exception = joinMessageException(
+                        command.onCommand(
+                                source(sender),
+                                new NamedWorldData("arena", worldData),
+                                new NamedSlimeLoader("mysql", targetLoader)
+                        )
+                );
+
+                assertFalse(worldsInUse.contains("arena"));
+                assertTrue(plainText(exception.getComponent()).contains("Take a look at the server console"));
+            }
+        }
     }
 
     @Nested
