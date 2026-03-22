@@ -9,6 +9,7 @@ import org.mockito.MockedStatic;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,6 +19,12 @@ import static org.mockito.Mockito.mockStatic;
 
 @DisplayName("ExecutorUtil")
 class ExecutorUtilTest {
+
+    @Test
+    @DisplayName("should allow utility instantiation")
+    void shouldAllowUtilityInstantiation() {
+        assertDoesNotThrow(ExecutorUtil::new);
+    }
 
     @Test
     @DisplayName("should run immediately on the primary thread")
@@ -81,6 +88,32 @@ class ExecutorUtilTest {
             );
 
             assertSame(expected, exception);
+        }
+    }
+
+    @Test
+    @DisplayName("should wrap interruptions while waiting for scheduled work")
+    void shouldWrapInterruptionsWhileWaitingForScheduledWork() {
+        Plugin plugin = mock(Plugin.class);
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+
+        doAnswer(invocation -> null)
+                .when(scheduler).runTask(org.mockito.ArgumentMatchers.eq(plugin), org.mockito.ArgumentMatchers.any(Runnable.class));
+
+        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
+            bukkit.when(Bukkit::isPrimaryThread).thenReturn(false);
+            bukkit.when(Bukkit::getScheduler).thenReturn(scheduler);
+            Thread.currentThread().interrupt();
+
+            RuntimeException exception = assertThrows(
+                    RuntimeException.class,
+                    () -> ExecutorUtil.runSyncAndWait(plugin, () -> {
+                    })
+            );
+
+            assertTrue(exception.getCause() instanceof InterruptedException);
+        } finally {
+            Thread.interrupted();
         }
     }
 }

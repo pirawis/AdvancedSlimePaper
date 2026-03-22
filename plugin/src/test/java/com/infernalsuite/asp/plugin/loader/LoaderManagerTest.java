@@ -7,6 +7,9 @@ import com.infernalsuite.asp.loaders.file.FileLoader;
 import com.infernalsuite.asp.loaders.mongo.MongoLoader;
 import com.infernalsuite.asp.loaders.mysql.MysqlLoader;
 import com.infernalsuite.asp.loaders.redis.RedisLoader;
+import com.infernalsuite.asp.plugin.config.DatasourcesConfig;
+import com.mongodb.MongoException;
+import io.lettuce.core.RedisException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -203,6 +206,69 @@ class LoaderManagerTest {
                 assertSame(redisLoaderConstruction.constructed().getFirst(), loaderManager.getLoader("redis"));
                 assertSame(apiLoaderConstruction.constructed().getFirst(), loaderManager.getLoader("api"));
             }
+        }
+
+        @Test
+        @DisplayName("should skip mysql loader when its construction fails")
+        void shouldSkipMysqlLoaderWhenItsConstructionFails() {
+            SlimeLoader fileLoader = mock(SlimeLoader.class);
+
+            loaderManager = new LoaderManager(configForOptionalLoaders(true, false, false, false)) {
+                @Override
+                protected SlimeLoader createFileLoader(final DatasourcesConfig.FileConfig fileConfig) {
+                    return fileLoader;
+                }
+
+                @Override
+                protected SlimeLoader createMysqlLoader(final DatasourcesConfig.MysqlConfig mysqlConfig) throws java.sql.SQLException {
+                    throw new java.sql.SQLException("mysql down");
+                }
+            };
+
+            assertSame(fileLoader, loaderManager.getLoader("file"));
+            assertNull(loaderManager.getLoader("mysql"));
+        }
+
+        @Test
+        @DisplayName("should skip mongo loader when its construction fails")
+        void shouldSkipMongoLoaderWhenItsConstructionFails() {
+            SlimeLoader fileLoader = mock(SlimeLoader.class);
+
+            loaderManager = new LoaderManager(configForOptionalLoaders(false, true, false, false)) {
+                @Override
+                protected SlimeLoader createFileLoader(final DatasourcesConfig.FileConfig fileConfig) {
+                    return fileLoader;
+                }
+
+                @Override
+                protected SlimeLoader createMongoLoader(final DatasourcesConfig.MongoDBConfig mongoConfig) throws MongoException {
+                    throw new MongoException("mongo down");
+                }
+            };
+
+            assertSame(fileLoader, loaderManager.getLoader("file"));
+            assertNull(loaderManager.getLoader("mongodb"));
+        }
+
+        @Test
+        @DisplayName("should skip redis loader when its construction fails")
+        void shouldSkipRedisLoaderWhenItsConstructionFails() {
+            SlimeLoader fileLoader = mock(SlimeLoader.class);
+
+            loaderManager = new LoaderManager(configForOptionalLoaders(false, false, true, false)) {
+                @Override
+                protected SlimeLoader createFileLoader(final DatasourcesConfig.FileConfig fileConfig) {
+                    return fileLoader;
+                }
+
+                @Override
+                protected SlimeLoader createRedisLoader(final DatasourcesConfig.RedisConfig redisConfig) throws RedisException {
+                    throw new RedisException("redis down");
+                }
+            };
+
+            assertSame(fileLoader, loaderManager.getLoader("file"));
+            assertNull(loaderManager.getLoader("redis"));
         }
     }
 
@@ -433,5 +499,57 @@ class LoaderManagerTest {
             assertTrue(loadersMap.containsKey("file"));
             assertEquals(1, loadersMap.size());
         }
+    }
+
+    private static DatasourcesConfig configForOptionalLoaders(
+            final boolean mysqlEnabled,
+            final boolean mongoEnabled,
+            final boolean redisEnabled,
+            final boolean apiEnabled
+    ) {
+        DatasourcesConfig mockConfig = mock(DatasourcesConfig.class);
+        DatasourcesConfig.FileConfig fileConfig = mock(DatasourcesConfig.FileConfig.class);
+        DatasourcesConfig.MysqlConfig mysqlConfig = mock(DatasourcesConfig.MysqlConfig.class);
+        DatasourcesConfig.MongoDBConfig mongoConfig = mock(DatasourcesConfig.MongoDBConfig.class);
+        DatasourcesConfig.RedisConfig redisConfig = mock(DatasourcesConfig.RedisConfig.class);
+        DatasourcesConfig.APIConfig apiConfig = mock(DatasourcesConfig.APIConfig.class);
+
+        lenient().when(fileConfig.getPath()).thenReturn(".");
+
+        lenient().when(mysqlConfig.isEnabled()).thenReturn(mysqlEnabled);
+        lenient().when(mysqlConfig.getSqlUrl()).thenReturn("jdbc:mysql://localhost:3306/asp");
+        lenient().when(mysqlConfig.getHost()).thenReturn("localhost");
+        lenient().when(mysqlConfig.getPort()).thenReturn(3306);
+        lenient().when(mysqlConfig.getDatabase()).thenReturn("asp");
+        lenient().when(mysqlConfig.isUsessl()).thenReturn(false);
+        lenient().when(mysqlConfig.getUsername()).thenReturn("root");
+        lenient().when(mysqlConfig.getPassword()).thenReturn("secret");
+
+        lenient().when(mongoConfig.isEnabled()).thenReturn(mongoEnabled);
+        lenient().when(mongoConfig.getDatabase()).thenReturn("asp");
+        lenient().when(mongoConfig.getCollection()).thenReturn("worlds");
+        lenient().when(mongoConfig.getUsername()).thenReturn("mongo");
+        lenient().when(mongoConfig.getPassword()).thenReturn("secret");
+        lenient().when(mongoConfig.getAuthSource()).thenReturn("admin");
+        lenient().when(mongoConfig.getHost()).thenReturn("localhost");
+        lenient().when(mongoConfig.getPort()).thenReturn(27017);
+        lenient().when(mongoConfig.getUri()).thenReturn("mongodb://localhost:27017");
+
+        lenient().when(redisConfig.isEnabled()).thenReturn(redisEnabled);
+        lenient().when(redisConfig.getUri()).thenReturn("redis://localhost:6379");
+
+        lenient().when(apiConfig.isEnabled()).thenReturn(apiEnabled);
+        lenient().when(apiConfig.getUrl()).thenReturn("https://example.test/api");
+        lenient().when(apiConfig.getUsername()).thenReturn("api-user");
+        lenient().when(apiConfig.getToken()).thenReturn("token");
+        lenient().when(apiConfig.isIgnoreSslCertificate()).thenReturn(false);
+
+        lenient().when(mockConfig.getFileConfig()).thenReturn(fileConfig);
+        lenient().when(mockConfig.getMysqlConfig()).thenReturn(mysqlConfig);
+        lenient().when(mockConfig.getMongoDbConfig()).thenReturn(mongoConfig);
+        lenient().when(mockConfig.getRedisConfig()).thenReturn(redisConfig);
+        lenient().when(mockConfig.getApiConfig()).thenReturn(apiConfig);
+
+        return mockConfig;
     }
 }

@@ -4,10 +4,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.spongepowered.configurate.CommentedConfigurationNode;
+import org.spongepowered.configurate.ConfigurateException;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 @DisplayName("WorldsConfig")
 class WorldsConfigTest {
@@ -141,6 +150,22 @@ class WorldsConfigTest {
             config.getWorlds().clear();
 
             assertTrue(config.getWorlds().isEmpty());
+        }
+    }
+
+    @Test
+    @DisplayName("save should swallow IO failures from the config loader")
+    void saveShouldSwallowIoFailuresFromTheConfigLoader() throws Exception {
+        YamlConfigurationLoader loader = mock(YamlConfigurationLoader.class);
+        CommentedConfigurationNode node = mock(CommentedConfigurationNode.class);
+        when(loader.createNode()).thenReturn(node);
+        when(node.set(any(io.leangen.geantyref.TypeToken.class), any())).thenReturn(node);
+        doThrow(new ConfigurateException("disk error")).when(loader).save(node);
+
+        try (MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+            configManager.when(ConfigManager::getWorldConfigLoader).thenReturn(loader);
+
+            assertDoesNotThrow(() -> config.save());
         }
     }
 }

@@ -17,9 +17,9 @@ import com.infernalsuite.asp.plugin.config.ConfigManager;
 import com.infernalsuite.asp.plugin.config.WorldData;
 import com.infernalsuite.asp.plugin.config.WorldsConfig;
 import com.infernalsuite.asp.plugin.loader.LoaderManager;
-import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.incendo.cloud.context.CommandContext;
@@ -140,6 +140,222 @@ class AdditionalPluginCoverageTest extends AbstractCommandTest {
                 );
 
                 assertTrue(plainText(exception.getComponent()).contains("inside the worlds config file"));
+            }
+        }
+
+        @Test
+        @DisplayName("should reject unknown biomes before scheduling work")
+        void shouldRejectUnknownBiomesBeforeSchedulingWork() {
+            SlimeLoader loader = mock(SlimeLoader.class);
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+            NamespacedKey biomeKey = NamespacedKey.minecraft("missing_biome");
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                CreateWorldCmd command = testableCreateWorldCmd(null, () -> {
+                });
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.createWorld(source(sender), "arena", new NamedSlimeLoader("file", loader), biomeKey, null)
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("Biome minecraft:missing_biomedoes not exist"));
+            }
+        }
+
+        @Test
+        @DisplayName("should reject invalid environments before creating worlds")
+        void shouldRejectInvalidEnvironmentsBeforeCreatingWorlds() {
+            SlimeLoader loader = mock(SlimeLoader.class);
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                CreateWorldCmd command = testableCreateWorldCmd("minecraft:plains", () -> {
+                });
+
+                MessageCommandException exception = assertThrows(
+                        MessageCommandException.class,
+                        () -> command.createWorld(
+                                source(sender),
+                                "arena",
+                                new NamedSlimeLoader("file", loader),
+                                null,
+                                "space"
+                        )
+                );
+
+                assertTrue(plainText(exception.getComponent()).contains("is not a valid environment"));
+            }
+        }
+
+        @Test
+        @DisplayName("should create, save and load empty worlds using the default biome")
+        void shouldCreateSaveAndLoadEmptyWorldsUsingTheDefaultBiome() throws Exception {
+            SlimeLoader loader = mock(SlimeLoader.class);
+            SlimeWorld slimeWorld = mock(SlimeWorld.class);
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            Map<String, WorldData> worlds = new HashMap<>();
+            when(worldsConfig.getWorlds()).thenReturn(worlds);
+            when(loader.worldExists("arena")).thenReturn(false);
+            when(asp.createEmptyWorld(eq("arena"), eq(false), any(SlimePropertyMap.class), eq(loader))).thenReturn(slimeWorld);
+            boolean[] bedrockPlaced = {false};
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                CreateWorldCmd command = testableCreateWorldCmd("minecraft:plains", () -> bedrockPlaced[0] = true);
+
+                assertDoesNotThrow(() -> command.createWorld(
+                        source(sender),
+                        "arena",
+                        new NamedSlimeLoader("file", loader),
+                        null,
+                        null
+                ).join());
+
+                verify(asp).createEmptyWorld(eq("arena"), eq(false), any(SlimePropertyMap.class), eq(loader));
+                verify(asp).saveWorld(slimeWorld);
+                verify(asp).loadWorld(slimeWorld, true);
+                verify(worldsConfig).save();
+                assertTrue(bedrockPlaced[0]);
+                assertEquals("file", worlds.get("arena").getDataSource());
+                assertEquals("minecraft:plains", worlds.get("arena").getDefaultBiome());
+                assertEquals("0, 64, 0", worlds.get("arena").getSpawn());
+                assertFalse(worldsInUse.contains("arena"));
+                assertMessageSent(sender, "Creating empty world arena");
+                assertMessageSent(sender, "created in");
+            }
+        }
+
+        @Test
+        @DisplayName("should persist explicit biome and environment when creating worlds")
+        void shouldPersistExplicitBiomeAndEnvironmentWhenCreatingWorlds() throws Exception {
+            SlimeLoader loader = mock(SlimeLoader.class);
+            SlimeWorld slimeWorld = mock(SlimeWorld.class);
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            Map<String, WorldData> worlds = new HashMap<>();
+            when(worldsConfig.getWorlds()).thenReturn(worlds);
+            when(loader.worldExists("end-arena")).thenReturn(false);
+            when(asp.createEmptyWorld(eq("end-arena"), eq(false), any(SlimePropertyMap.class), eq(loader))).thenReturn(slimeWorld);
+            NamespacedKey biomeKey = NamespacedKey.minecraft("desert");
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("end-arena")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                CreateWorldCmd command = testableCreateWorldCmd("minecraft:desert", () -> {
+                });
+
+                assertDoesNotThrow(() -> command.createWorld(
+                        source(sender),
+                        "end-arena",
+                        new NamedSlimeLoader("file", loader),
+                        biomeKey,
+                        "the_end"
+                ).join());
+
+                assertEquals("minecraft:desert", worlds.get("end-arena").getDefaultBiome());
+                assertEquals("the_end", worlds.get("end-arena").getEnvironment());
+                assertFalse(worldsInUse.contains("end-arena"));
+            }
+        }
+
+        @Test
+        @DisplayName("should reject worlds that already exist in the loader")
+        void shouldRejectWorldsThatAlreadyExistInTheLoader() throws Exception {
+            SlimeLoader loader = mock(SlimeLoader.class);
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+            when(loader.worldExists("arena")).thenReturn(true);
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                CreateWorldCmd command = testableCreateWorldCmd("minecraft:plains", () -> {
+                });
+
+                MessageCommandException exception = joinMessageException(
+                        command.createWorld(source(sender), "arena", new NamedSlimeLoader("file", loader), null, null)
+                );
+
+                assertFalse(worldsInUse.contains("arena"));
+                assertTrue(plainText(exception.getComponent()).contains("world already exists"));
+            }
+        }
+
+        @Test
+        @DisplayName("should surface world generation failures while creating worlds")
+        void shouldSurfaceWorldGenerationFailuresWhileCreatingWorlds() throws Exception {
+            SlimeLoader loader = mock(SlimeLoader.class);
+            SlimeWorld slimeWorld = mock(SlimeWorld.class);
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+            when(loader.worldExists("arena")).thenReturn(false);
+            when(asp.createEmptyWorld(eq("arena"), eq(false), any(SlimePropertyMap.class), eq(loader))).thenReturn(slimeWorld);
+            doThrow(new IllegalArgumentException("boom")).when(asp).loadWorld(slimeWorld, true);
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                CreateWorldCmd command = testableCreateWorldCmd("minecraft:plains", () -> {
+                });
+
+                MessageCommandException exception = joinMessageException(
+                        command.createWorld(source(sender), "arena", new NamedSlimeLoader("file", loader), null, null)
+                );
+
+                assertFalse(worldsInUse.contains("arena"));
+                assertTrue(plainText(exception.getComponent()).contains("Failed to create world arena: boom."));
+            }
+        }
+
+        @Test
+        @DisplayName("should wrap io failures while creating worlds")
+        void shouldWrapIoFailuresWhileCreatingWorlds() throws Exception {
+            SlimeLoader loader = mock(SlimeLoader.class);
+            SlimeWorld slimeWorld = mock(SlimeWorld.class);
+            WorldsConfig worldsConfig = mock(WorldsConfig.class);
+            when(worldsConfig.getWorlds()).thenReturn(new HashMap<>());
+            when(loader.worldExists("arena")).thenReturn(false);
+            when(asp.createEmptyWorld(eq("arena"), eq(false), any(SlimePropertyMap.class), eq(loader))).thenReturn(slimeWorld);
+            doThrow(new IOException("disk error")).when(asp).saveWorld(slimeWorld);
+
+            try (MockedStatic<com.infernalsuite.asp.api.AdvancedSlimePaperAPI> ignored = mockApiInstance();
+                 MockedStatic<CompletableFuture> async = mockRunAsyncInline();
+                 MockedStatic<Bukkit> bukkit = mockPrimaryThreadBukkit();
+                 MockedStatic<ConfigManager> configManager = mockStatic(ConfigManager.class)) {
+                bukkit.when(() -> Bukkit.getWorld("arena")).thenReturn(null);
+                configManager.when(ConfigManager::getWorldConfig).thenReturn(worldsConfig);
+                CreateWorldCmd command = testableCreateWorldCmd("minecraft:plains", () -> {
+                });
+
+                MessageCommandException exception = joinMessageException(
+                        command.createWorld(source(sender), "arena", new NamedSlimeLoader("file", loader), null, null)
+                );
+
+                assertFalse(worldsInUse.contains("arena"));
+                assertTrue(plainText(exception.getComponent()).contains("Take a look at the server console"));
             }
         }
     }
@@ -426,6 +642,20 @@ class AdditionalPluginCoverageTest extends AbstractCommandTest {
             }
         });
         return completableFuture;
+    }
+
+    private CreateWorldCmd testableCreateWorldCmd(final String biomeKey, final Runnable bedrockPlacer) {
+        return new CreateWorldCmd(commandManager) {
+            @Override
+            protected String resolveBiomeKey(final NamespacedKey key) {
+                return biomeKey;
+            }
+
+            @Override
+            protected void placeBedrock(final String worldName) {
+                bedrockPlacer.run();
+            }
+        };
     }
 
     private static MessageCommandException joinMessageException(final CompletableFuture<?> future) {

@@ -7,6 +7,7 @@ import com.infernalsuite.asp.loaders.file.FileLoader;
 import com.infernalsuite.asp.loaders.mongo.MongoLoader;
 import com.infernalsuite.asp.loaders.mysql.MysqlLoader;
 import com.infernalsuite.asp.loaders.redis.RedisLoader;
+import com.infernalsuite.asp.plugin.config.DatasourcesConfig;
 import com.mongodb.MongoException;
 import io.lettuce.core.RedisException;
 import org.slf4j.Logger;
@@ -25,65 +26,87 @@ public class LoaderManager {
     private final Map<String, SlimeLoader> loaders = new HashMap<>();
 
     public LoaderManager() {
-        com.infernalsuite.asp.plugin.config.DatasourcesConfig config = com.infernalsuite.asp.plugin.config.ConfigManager.getDatasourcesConfig();
+        this(com.infernalsuite.asp.plugin.config.ConfigManager.getDatasourcesConfig());
+    }
 
+    LoaderManager(final DatasourcesConfig config) {
         // File loader
-        com.infernalsuite.asp.plugin.config.DatasourcesConfig.FileConfig fileConfig = config.getFileConfig();
-        registerLoader("file", new FileLoader(new File(fileConfig.getPath())));
+        final DatasourcesConfig.FileConfig fileConfig = config.getFileConfig();
+        registerLoader("file", createFileLoader(fileConfig));
 
         // Mysql loader
-        com.infernalsuite.asp.plugin.config.DatasourcesConfig.MysqlConfig mysqlConfig = config.getMysqlConfig();
+        final DatasourcesConfig.MysqlConfig mysqlConfig = config.getMysqlConfig();
         if (mysqlConfig.isEnabled()) {
             try {
-                registerLoader("mysql", new MysqlLoader(
-                        mysqlConfig.getSqlUrl(),
-                        mysqlConfig.getHost(), mysqlConfig.getPort(),
-                        mysqlConfig.getDatabase(), mysqlConfig.isUsessl(),
-                        mysqlConfig.getUsername(), mysqlConfig.getPassword()
-                ));
+                registerLoader("mysql", createMysqlLoader(mysqlConfig));
             } catch (final SQLException ex) {
                 LOGGER.error("Failed to establish connection to the MySQL server:", ex);
             }
         }
 
         // MongoDB loader
-        com.infernalsuite.asp.plugin.config.DatasourcesConfig.MongoDBConfig mongoConfig = config.getMongoDbConfig();
+        final DatasourcesConfig.MongoDBConfig mongoConfig = config.getMongoDbConfig();
 
         if (mongoConfig.isEnabled()) {
             try {
-                registerLoader("mongodb", new MongoLoader(
-                        mongoConfig.getDatabase(),
-                        mongoConfig.getCollection(),
-                        mongoConfig.getUsername(),
-                        mongoConfig.getPassword(),
-                        mongoConfig.getAuthSource(),
-                        mongoConfig.getHost(),
-                        mongoConfig.getPort(),
-                        mongoConfig.getUri()
-                ));
+                registerLoader("mongodb", createMongoLoader(mongoConfig));
             } catch (final MongoException ex) {
                 LOGGER.error("Failed to establish connection to the MongoDB server:", ex);
             }
         }
 
-        com.infernalsuite.asp.plugin.config.DatasourcesConfig.RedisConfig redisConfig = config.getRedisConfig();
+        final DatasourcesConfig.RedisConfig redisConfig = config.getRedisConfig();
         if (redisConfig.isEnabled()){
             try {
-                registerLoader("redis", new RedisLoader(redisConfig.getUri()));
+                registerLoader("redis", createRedisLoader(redisConfig));
             } catch (final RedisException ex) {
                 LOGGER.error("Failed to establish connection to the Redis server:", ex);
             }
         }
 
-        com.infernalsuite.asp.plugin.config.DatasourcesConfig.APIConfig apiConfig = config.getApiConfig();
+        final DatasourcesConfig.APIConfig apiConfig = config.getApiConfig();
         if(apiConfig.isEnabled()){
-            registerLoader("api", new APILoader(
-                    apiConfig.getUrl(),
-                    apiConfig.getUsername(),
-                    apiConfig.getToken(),
-                    apiConfig.isIgnoreSslCertificate()
-            ));
+            registerLoader("api", createApiLoader(apiConfig));
         }
+    }
+
+    protected SlimeLoader createFileLoader(final DatasourcesConfig.FileConfig fileConfig) {
+        return new FileLoader(new File(fileConfig.getPath()));
+    }
+
+    protected SlimeLoader createMysqlLoader(final DatasourcesConfig.MysqlConfig mysqlConfig) throws SQLException {
+        return new MysqlLoader(
+                mysqlConfig.getSqlUrl(),
+                mysqlConfig.getHost(), mysqlConfig.getPort(),
+                mysqlConfig.getDatabase(), mysqlConfig.isUsessl(),
+                mysqlConfig.getUsername(), mysqlConfig.getPassword()
+        );
+    }
+
+    protected SlimeLoader createMongoLoader(final DatasourcesConfig.MongoDBConfig mongoConfig) throws MongoException {
+        return new MongoLoader(
+                mongoConfig.getDatabase(),
+                mongoConfig.getCollection(),
+                mongoConfig.getUsername(),
+                mongoConfig.getPassword(),
+                mongoConfig.getAuthSource(),
+                mongoConfig.getHost(),
+                mongoConfig.getPort(),
+                mongoConfig.getUri()
+        );
+    }
+
+    protected SlimeLoader createRedisLoader(final DatasourcesConfig.RedisConfig redisConfig) throws RedisException {
+        return new RedisLoader(redisConfig.getUri());
+    }
+
+    protected SlimeLoader createApiLoader(final DatasourcesConfig.APIConfig apiConfig) {
+        return new APILoader(
+                apiConfig.getUrl(),
+                apiConfig.getUsername(),
+                apiConfig.getToken(),
+                apiConfig.isIgnoreSslCertificate()
+        );
     }
 
     public void registerLoader(String dataSource, SlimeLoader loader) {

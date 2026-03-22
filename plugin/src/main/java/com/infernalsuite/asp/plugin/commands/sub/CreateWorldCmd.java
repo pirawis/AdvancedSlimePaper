@@ -69,11 +69,9 @@ public class CreateWorldCmd extends SlimeCommand {
             );
         }
 
-        NamespacedKey defaultBiome = Objects.requireNonNull(NamespacedKey.fromString(SlimeProperties.DEFAULT_BIOME.getDefaultValue()));
-        Biome actualBiome = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME)
-                .get(biome == null ? defaultBiome : biome);
+        String actualBiomeKey = resolveBiomeKey(biome);
 
-        if(actualBiome == null) {
+        if(actualBiomeKey == null) {
             throw new MessageCommandException(COMMAND_PREFIX.append(
                     Component.text("Biome " + biome + "does not exist")).color(NamedTextColor.RED)
             );
@@ -105,7 +103,7 @@ public class CreateWorldCmd extends SlimeCommand {
                 WorldData worldData = new WorldData();
                 worldData.setSpawn("0, 64, 0");
                 worldData.setDataSource(loader.name());
-                worldData.setDefaultBiome(actualBiome.key().asString());
+                worldData.setDefaultBiome(actualBiomeKey);
                 if(environment != null) {
                     worldData.setEnvironment(environment);
                 }
@@ -119,8 +117,7 @@ public class CreateWorldCmd extends SlimeCommand {
                         asp.loadWorld(slimeWorld, true);
 
                         // Bedrock block
-                        Location location = new Location(Bukkit.getWorld(worldName), 0, 61, 0);
-                        location.getBlock().setType(Material.BEDROCK);
+                        placeBedrock(worldName);
 
                         // Config
                         config.getWorlds().put(worldName, worldData);
@@ -150,6 +147,18 @@ public class CreateWorldCmd extends SlimeCommand {
                 commandManager.getWorldsInUse().remove(worldName);
             }
         });
+    }
+
+    protected @Nullable String resolveBiomeKey(@Nullable final NamespacedKey biome) {
+        NamespacedKey defaultBiome = Objects.requireNonNull(NamespacedKey.fromString(SlimeProperties.DEFAULT_BIOME.getDefaultValue()));
+        Biome actualBiome = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME)
+                .get(biome == null ? defaultBiome : biome);
+        return actualBiome == null ? null : actualBiome.key().asString();
+    }
+
+    protected void placeBedrock(final String worldName) {
+        Location location = new Location(Bukkit.getWorld(worldName), 0, 61, 0);
+        location.getBlock().setType(Material.BEDROCK);
     }
 }
 
