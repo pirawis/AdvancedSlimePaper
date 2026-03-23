@@ -1,8 +1,11 @@
 package com.infernalsuite.asp.skeleton;
 
+import com.infernalsuite.asp.Util;
+import com.infernalsuite.asp.api.exceptions.WorldAlreadyExistsException;
 import com.infernalsuite.asp.api.loaders.SlimeLoader;
 import com.infernalsuite.asp.api.world.SlimeChunk;
 import com.infernalsuite.asp.api.world.properties.SlimePropertyMap;
+import com.infernalsuite.asp.serialization.slime.SlimeSerializer;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.kyori.adventure.nbt.BinaryTag;
@@ -12,12 +15,15 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @DisplayName("SkeletonSlimeWorld")
 @ExtendWith(MockitoExtension.class)
@@ -152,6 +158,30 @@ class SkeletonSlimeWorldTest {
         void shouldReturnNullForNonExistentChunk() {
             assertNull(world.getChunk(0, 0));
         }
+
+        @Test
+        @DisplayName("should return stored chunk for coordinates")
+        void shouldReturnStoredChunkForCoordinates() {
+            SlimeChunk chunk = mock(SlimeChunk.class);
+            chunkStorage.put(Util.chunkPosition(2, -3), chunk);
+
+            assertSame(chunk, world.getChunk(2, -3));
+        }
+    }
+
+    @Nested
+    @DisplayName("getChunkStorage")
+    class GetChunkStorageTests {
+
+        @Test
+        @DisplayName("should expose stored chunk collection")
+        void shouldExposeStoredChunkCollection() {
+            SlimeChunk chunk = mock(SlimeChunk.class);
+            chunkStorage.put(Util.chunkPosition(1, 1), chunk);
+
+            assertEquals(1, world.getChunkStorage().size());
+            assertTrue(world.getChunkStorage().contains(chunk));
+        }
     }
 
     @Nested
@@ -170,6 +200,55 @@ class SkeletonSlimeWorldTest {
         void shouldThrowWhenWorldNameIsNull() {
             assertThrows(IllegalArgumentException.class, () ->
                     world.clone(null, loader));
+        }
+
+        @Test
+        @DisplayName("should throw when target loader already contains the world")
+        void shouldThrowWhenTargetLoaderAlreadyContainsTheWorld() throws Exception {
+            when(loader.worldExists("existing")).thenReturn(true);
+
+            assertThrows(WorldAlreadyExistsException.class, () ->
+                    world.clone("existing", loader));
+        }
+
+        @Test
+        @DisplayName("should clone with provided loader and persist serialized bytes")
+        void shouldCloneWithProvidedLoaderAndPersistSerializedBytes() throws Exception {
+            SkeletonSlimeWorld cloned = mock(SkeletonSlimeWorld.class);
+            byte[] serialized = new byte[]{1, 2, 3};
+
+            when(loader.worldExists("copy")).thenReturn(false);
+
+            try (MockedStatic<SkeletonCloning> cloning = mockStatic(SkeletonCloning.class);
+                 MockedStatic<SlimeSerializer> serializer = mockStatic(SlimeSerializer.class)) {
+                cloning.when(() -> SkeletonCloning.fullClone("copy", world, loader, false)).thenReturn(cloned);
+                serializer.when(() -> SlimeSerializer.serialize(cloned)).thenReturn(serialized);
+
+                assertSame(cloned, world.clone("copy", loader));
+                verify(loader).saveWorld("copy", serialized);
+            }
+        }
+
+        @Test
+        @DisplayName("should clone without persistence when loader is null")
+        void shouldCloneWithoutPersistenceWhenLoaderIsNull() {
+            SkeletonSlimeWorld cloned = mock(SkeletonSlimeWorld.class);
+
+            try (MockedStatic<SkeletonCloning> cloning = mockStatic(SkeletonCloning.class)) {
+                cloning.when(() -> SkeletonCloning.fullClone("copy", world, null, false)).thenReturn(cloned);
+
+                assertSame(cloned, world.clone("copy"));
+                verifyNoInteractions(loader);
+            }
+        }
+
+        @Test
+        @DisplayName("should return null when simple clone hits an impossible checked exception")
+        void shouldReturnNullWhenSimpleCloneHitsAnImpossibleCheckedException() throws Exception {
+            SkeletonSlimeWorld spyWorld = spy(world);
+            doThrow(new IOException("boom")).when(spyWorld).clone("copy", null);
+
+            assertNull(spyWorld.clone("copy"));
         }
     }
 
