@@ -1,5 +1,6 @@
 package com.infernalsuite.asp.pdc;
 
+import com.infernalsuite.asp.api.SlimeNMSBridge;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.ByteArrayBinaryTag;
 import net.kyori.adventure.nbt.ByteBinaryTag;
@@ -8,17 +9,30 @@ import net.kyori.adventure.nbt.DoubleBinaryTag;
 import net.kyori.adventure.nbt.FloatBinaryTag;
 import net.kyori.adventure.nbt.IntArrayBinaryTag;
 import net.kyori.adventure.nbt.IntBinaryTag;
+import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.nbt.LongArrayBinaryTag;
 import net.kyori.adventure.nbt.LongBinaryTag;
 import net.kyori.adventure.nbt.ShortBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
+import org.bukkit.NamespacedKey;
+import org.bukkit.persistence.ListPersistentDataType;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @DisplayName("AdventureDataTypeRegistry")
 class AdventureDataTypeRegistryTest {
@@ -315,6 +329,94 @@ class AdventureDataTypeRegistryTest {
 
             assertInstanceOf(AdventurePersistentDataContainer.class, result);
         }
+
+        @Test
+        @DisplayName("should wrap non-adventure persistent data containers through the NMS bridge")
+        void shouldWrapCraftLikePersistentDataContainerThroughTheNmsBridge() {
+            PersistentDataContainer container = mock(PersistentDataContainer.class);
+            SlimeNMSBridge bridge = mock(SlimeNMSBridge.class);
+
+            try (var mocked = mockStatic(SlimeNMSBridge.class)) {
+                mocked.when(SlimeNMSBridge::instance).thenReturn(bridge);
+                when(container.getAdapterContext()).thenReturn(mock(org.bukkit.persistence.PersistentDataAdapterContext.class));
+
+                BinaryTag tag = registry.wrap(PersistentDataType.TAG_CONTAINER, container);
+
+                assertInstanceOf(CompoundBinaryTag.class, tag);
+                verify(bridge).extractCraftPDC(same(container), any(CompoundBinaryTag.Builder.class));
+            }
+        }
+
+        @Test
+        @DisplayName("should wrap and extract persistent data container arrays")
+        void shouldWrapAndExtractPersistentDataContainerArrays() {
+            AdventurePersistentDataContainer first = new AdventurePersistentDataContainer(registry);
+            first.set(new NamespacedKey("test", "first"), PersistentDataType.INTEGER, 1);
+            AdventurePersistentDataContainer second = new AdventurePersistentDataContainer(registry);
+            second.set(new NamespacedKey("test", "second"), PersistentDataType.STRING, "two");
+
+            BinaryTag tag = registry.wrap(PersistentDataType.TAG_CONTAINER_ARRAY, new PersistentDataContainer[]{first, second});
+
+            assertInstanceOf(ListBinaryTag.class, tag);
+            PersistentDataContainer[] result = registry.extract(PersistentDataType.TAG_CONTAINER_ARRAY, tag);
+            assertEquals(2, result.length);
+            assertEquals(1, result[0].get(new NamespacedKey("test", "first"), PersistentDataType.INTEGER));
+            assertEquals("two", result[1].get(new NamespacedKey("test", "second"), PersistentDataType.STRING));
+        }
+    }
+
+    @Nested
+    @DisplayName("list adapters")
+    class ListAdapterTests {
+
+        @Test
+        @DisplayName("should wrap and extract primitive lists")
+        void shouldWrapAndExtractPrimitiveLists() {
+            ListPersistentDataType<String, String> strings = PersistentDataType.LIST.strings();
+
+            BinaryTag tag = registry.wrap(strings, List.of("alpha", "beta"));
+
+            assertInstanceOf(ListBinaryTag.class, tag);
+            List<String> result = registry.extract(strings, tag);
+            assertEquals(List.of("alpha", "beta"), result);
+        }
+
+        @Test
+        @DisplayName("should wrap and extract persistent data container lists")
+        void shouldWrapAndExtractContainerLists() {
+            AdventurePersistentDataContainer first = new AdventurePersistentDataContainer(registry);
+            first.set(new NamespacedKey("test", "id"), PersistentDataType.INTEGER, 1);
+            AdventurePersistentDataContainer second = new AdventurePersistentDataContainer(registry);
+            second.set(new NamespacedKey("test", "id"), PersistentDataType.INTEGER, 2);
+            ListPersistentDataType<PersistentDataContainer, PersistentDataContainer> listType = PersistentDataType.LIST.dataContainers();
+
+            BinaryTag tag = registry.wrap(listType, List.of(first, second));
+
+            assertInstanceOf(ListBinaryTag.class, tag);
+            List<PersistentDataContainer> result = registry.extract(listType, tag);
+            assertEquals(2, result.size());
+            assertEquals(1, result.get(0).get(new NamespacedKey("test", "id"), PersistentDataType.INTEGER));
+            assertEquals(2, result.get(1).get(new NamespacedKey("test", "id"), PersistentDataType.INTEGER));
+        }
+
+        @Test
+        @DisplayName("should detect matching and mismatching list tag element types")
+        void shouldDetectMatchingAndMismatchingListTagElementTypes() {
+            ListPersistentDataType<String, String> strings = PersistentDataType.LIST.strings();
+            ListPersistentDataType<Integer, Integer> integers = PersistentDataType.LIST.integers();
+            BinaryTag tag = registry.wrap(strings, List.of("alpha"));
+
+            assertTrue(registry.isInstanceOf(strings, tag));
+            assertFalse(registry.isInstanceOf(integers, tag));
+        }
+
+        @Test
+        @DisplayName("should reject extracting list tags with a non-list data type")
+        void shouldRejectExtractingListTagsWithANonListDataType() {
+            ListBinaryTag tag = ListBinaryTag.builder().add(StringBinaryTag.stringBinaryTag("alpha")).build();
+
+            assertThrows(IllegalArgumentException.class, () -> registry.extract(PersistentDataType.STRING, tag));
+        }
     }
 
     @Nested
@@ -328,6 +430,34 @@ class AdventureDataTypeRegistryTest {
 
             assertThrows(IllegalArgumentException.class, () ->
                     registry.extract(PersistentDataType.INTEGER, tag));
+        }
+
+        @Test
+        @DisplayName("should reject unsupported primitive types")
+        void shouldRejectUnsupportedPrimitiveTypes() {
+            PersistentDataType<UUID, UUID> unsupported = new PersistentDataType<>() {
+                @Override
+                public Class<UUID> getPrimitiveType() {
+                    return UUID.class;
+                }
+
+                @Override
+                public Class<UUID> getComplexType() {
+                    return UUID.class;
+                }
+
+                @Override
+                public UUID toPrimitive(final UUID complex, final org.bukkit.persistence.PersistentDataAdapterContext context) {
+                    return complex;
+                }
+
+                @Override
+                public UUID fromPrimitive(final UUID primitive, final org.bukkit.persistence.PersistentDataAdapterContext context) {
+                    return primitive;
+                }
+            };
+
+            assertThrows(IllegalArgumentException.class, () -> registry.wrap(unsupported, UUID.randomUUID()));
         }
     }
 }

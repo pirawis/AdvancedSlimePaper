@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 @DisplayName("AdventurePersistentDataContainer")
 class AdventurePersistentDataContainerTest {
@@ -229,6 +230,14 @@ class AdventurePersistentDataContainerTest {
 
             assertEquals(999, other.get(new NamespacedKey("test", "key1"), PersistentDataType.INTEGER));
         }
+
+        @Test
+        @DisplayName("should reject copying to non-adventure containers")
+        void shouldRejectCopyingToNonAdventureContainers() {
+            org.bukkit.persistence.PersistentDataContainer other = mock(org.bukkit.persistence.PersistentDataContainer.class);
+            assertThrows(IllegalArgumentException.class, () ->
+                    container.copyTo(other, true));
+        }
     }
 
     @Nested
@@ -278,6 +287,20 @@ class AdventurePersistentDataContainerTest {
             container.readFromBytes(new byte[0], false);
 
             assertTrue(container.has(new NamespacedKey("test", "existing")));
+        }
+
+        @Test
+        @DisplayName("should merge tags when reading without clear")
+        void shouldMergeTagsWhenReadingWithoutClear() throws IOException {
+            container.set(new NamespacedKey("test", "existing"), PersistentDataType.STRING, "value");
+
+            AdventurePersistentDataContainer source = new AdventurePersistentDataContainer();
+            source.set(new NamespacedKey("test", "added"), PersistentDataType.INTEGER, 7);
+
+            container.readFromBytes(source.serializeToBytes(), false);
+
+            assertEquals("value", container.get(new NamespacedKey("test", "existing"), PersistentDataType.STRING));
+            assertEquals(7, container.get(new NamespacedKey("test", "added"), PersistentDataType.INTEGER));
         }
     }
 
@@ -356,6 +379,19 @@ class AdventurePersistentDataContainerTest {
 
             assertThrows(UnsupportedOperationException.class, () ->
                     tags.put("test:key", StringBinaryTag.stringBinaryTag("value")));
+        }
+
+        @Test
+        @DisplayName("should ignore malformed raw keys when listing namespaced keys")
+        void shouldIgnoreMalformedRawKeysWhenListingNamespacedKeys() {
+            AdventurePersistentDataContainer pdc = new AdventurePersistentDataContainer(Map.of(
+                    "valid:key", IntBinaryTag.intBinaryTag(1),
+                    "invalid", IntBinaryTag.intBinaryTag(2)
+            ));
+
+            Set<NamespacedKey> keys = pdc.getKeys();
+
+            assertEquals(Set.of(new NamespacedKey("valid", "key")), keys);
         }
     }
 }
